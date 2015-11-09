@@ -1,0 +1,445 @@
+#!/usr/bin/env python3
+
+import os
+import configparser
+from natsort import natsorted
+from Interface import Interface
+
+from gi.repository import GdkPixbuf
+
+import pyinotify
+
+OPEN_NEXT = 0
+OPEN_PREV = 1
+
+CONFIG_SECTION_DEFAULT = 'DEFAULT'
+CONFIG_SECTION_PREFS = 'Preferences'
+
+CONFIG_WINDOW_WIDTH = 'Window_width'
+CONFIG_WINDOW_HEIGHT = 'Window_height'
+CONFIG_WINDOW_FULLSCREEN = 'Window_fullscreen'
+
+DEFAULT_CONFIG = {CONFIG_WINDOW_WIDTH : '100', CONFIG_WINDOW_HEIGHT : '100', CONFIG_WINDOW_FULLSCREEN : 'False'}
+
+SUPPORTED_STATIC = ['.png', '.jpg', '.jpeg', '.bmp']
+SUPPORTED_ANIMATION = ['.gif']
+
+ANIMATION_RATE = 60.0 # 60 FPS (too high?)
+
+ANIMATION_DELAY = 1 / ANIMATION_RATE
+
+INOTIFY_TIMEOUT = 10 # Keep this number low
+
+## Inotify Handler
+class InotifyEventHandler(pyinotify.ProcessEvent):
+  def __init__(self, image_viewer):
+    pyinotify.ProcessEvent.__init__(self)
+    self.image_viewer = image_viewer
+  
+  def process_IN_CREATE(self, event):
+    self.image_viewer.addToFilelist(event.pathname)
+  
+  def process_IN_DELETE(self, event):
+    self.image_viewer.removeFromFilelist(event.pathname)
+    
+  def process_IN_MOVED_FROM(self, event):
+    # file moved from the folder
+    self.process_IN_DELETE(event)
+  
+  def process_IN_MOVED_IN(self, event):
+    # file moved in the folder
+    self.process_IN_CREATE(event)
+
+## IWImage
+class IWImage():
+
+  def __init__(self, path):
+    self.path = path
+    self.position = -1
+    _, self.extension = os.path.splitext(self.path)
+    self.name = os.path.basename(self.path)
+    self.folder = os.path.dirname(self.path)
+    self.setError()
+    self.load()
+  
+  def setError(self):
+    self.pixbuf = None
+    self.size = None
+    self.is_resizable = False
+    self.error_loading = True
+  
+  def load(self):
+    if self.extension in SUPPORTED_STATIC:
+      self.loadStaticImage()
+    elif self.extension in SUPPORTED_ANIMATION:
+      self.loadAnimation()
+    else:
+      self.setError()
+  
+  def loadStaticImage(self):
+    try:
+      self.pixbuf = GdkPixbuf.Pixbuf.new_from_file(self.path)
+      self.size = (self.pixbuf.get_width(), self.pixbuf.get_height())
+      self.is_resizable = True
+      self.error_loading = False
+    except Exception:
+      self.setError()
+  
+  def loadAnimation(self):
+    try:
+      self.pixbuf = GdkPixbuf.PixbufAnimation.new_from_file(self.path)
+      self.size = (self.pixbuf.get_width(), self.pixbuf.get_height())
+      self.is_resizable = False
+      self.error_loading = False
+    except Exception:
+      self.setError()
+  
+  def isAnimation(self):
+    return not self.error_loading and self.extension in SUPPORTED_ANIMATION
+  
+  def isStatic(self):
+    return not self.error_loading and self.extension in SUPPORTED_STATIC
+  
+  def isError(self):
+    return self.error_loading
+  
+  def scale(self, width, height):
+    if self.isStatic():
+      return self.pixbuf.scale_simple(width, height, GdkPixbuf.InterpType.BILINEAR)
+    elif self.isAnimation():
+      return None
+    else:
+      return None
+  
+  '''
+  def scaleAnimation(self, width, height):
+    # Get all pixbuf and resize
+    delay = GLib.TimeVal()
+    # Stop loop
+    print(self.pixbuf.list_properties())
+    #self.pixbuf.set_loop(False)
+    pixiter = self.pixbuf.get_iter(delay)
+    all_pbuf = []
+    keep = True
+    while keep:
+      frame_pixbuf = pixiter.get_pixbuf()
+      pbuf = self.scaleAnimationFrame(frame_pixbuf, width, height)
+      all_pbuf.append(pbuf)
+      #delay_ms = pixiter.get_delay() * 1000
+      delay_ms = ANIMATION_DELAY * 1000000
+      delay.add(delay_ms)
+      r = pixiter.advance(delay)
+      print(r) # DEBUG
+    #self.pixbuf.set_loop(True)
+    # Compose new animation
+    new_animation = GdkPixbuf.PixbufSimpleAnim.new(width, height, ANIMATION_RATE)
+    for pbuf in all_pbuf:
+      new_animation.add_frame(pbuf)
+    new_animation.set_loop(True)
+    return new_animation
+  
+  def scaleAnimationFrame(self, pixbuf, width, height):
+    return pixbuf.scale_simple(width, height, GdkPixbuf.InterpType.BILINEAR)
+  '''
+  
+  def isResizable(self):
+    return self.is_resizable
+    
+  def getSize(self):
+    return self.size
+  
+  def getFilepath(self):
+    return self.path
+  
+  def getName(self):
+    return self.name
+  
+  def getPixbuf(self):
+    return self.pixbuf
+  
+  def getFolder(self):
+    return self.folder
+  
+  def getFolderName(self):
+    return os.path.basename(self.folder)
+  
+  def setPosition(self, position):
+    self.position = position
+  
+  def getPosition(self):
+    return self.position
+    
+# Image Viewer
+class ImageViewer():
+  
+  def __init__(self, config_folder):
+    self.config_folder = config_folder
+    if not os.path.exists(self.config_folder):
+      os.mkdir(self.config_folder)
+    self.loadConfig()
+    self.setupInterface()
+    self.current_image = None
+    self.files_in_folder = []
+    # Inotify
+    self.pyinotify_wm = pyinotify.WatchManager()
+    self.pyinotify_mask = pyinotify.IN_DELETE | pyinotify.IN_CREATE | pyinotify.IN_MOVED_FROM | pyinotify.IN_MOVED_TO
+    handler = InotifyEventHandler(self)
+    self.pyinotify_notifier = pyinotify.Notifier(self.pyinotify_wm, handler, timeout=INOTIFY_TIMEOUT)
+    self.pyinotify_wdd = {}
+  
+  def loadConfig(self):
+    self.config = configparser.SafeConfigParser(DEFAULT_CONFIG)
+    self.config_file = os.path.join(self.config_folder, 'config.txt')
+    self.config.read(self.config_file)
+  
+  def getConfig(self, param):
+    return self.config.get(CONFIG_SECTION_DEFAULT, param)
+  
+  def getConfigInt(self, param):
+    return int(self.config.get(CONFIG_SECTION_DEFAULT, param))
+  
+  def getConfigBool(self, param):
+    if self.config.get(CONFIG_SECTION_DEFAULT, param).lower() == 'true':
+      return True
+    else:
+      return False
+  
+  def setConfig(self, param, value):
+    self.config[CONFIG_SECTION_DEFAULT][param] = str(value)
+  
+  def saveConfig(self):
+    self.config.write(open(self.config_file, 'w'))
+  
+  def setupInterface(self):
+    request_size = (self.getConfigInt(CONFIG_WINDOW_WIDTH), self.getConfigInt(CONFIG_WINDOW_HEIGHT))
+    self.interface = Interface(self)
+    self.interface.resize(request_size)
+    fullscreen = self.getConfigBool(CONFIG_WINDOW_FULLSCREEN)
+    self.interface.modeFullscreen(fullscreen)
+    self.interface.show()
+  
+  def start(self, imagepath=None):
+    if imagepath is not None:
+      self.current_image = self.openImage(imagepath)
+      current_folder = self.current_image.getFolder()
+      self.inotifyAdd(current_folder)
+      self.files_in_folder = self.readFolder(current_folder)
+      self.setCurrentImagePosition()
+    self.interface.start(self.current_image)
+  
+  def close(self):
+    # save last window size
+    width, height = self.interface.getSize()
+    fullscreen = self.interface.getFullscreen()
+    self.setConfig(CONFIG_WINDOW_WIDTH, width)
+    self.setConfig(CONFIG_WINDOW_HEIGHT, height)
+    self.setConfig(CONFIG_WINDOW_FULLSCREEN, fullscreen)
+    # save config
+    self.saveConfig()
+  
+  def stop(self):
+    self.interface.close()
+  
+  def inotifyAdd(self, path):
+    self.pyinotify_wdd = self.pyinotify_wm.add_watch(path, self.pyinotify_mask, rec=False)
+    
+  def inotifyRemove(self, path):
+    if self.pyinotify_wdd[path] > 0:
+      self.pyinotify_wm.rm_watch(self.pyinotify_wdd[path])
+  
+  def openNextImage(self):
+    self.openNearImage(OPEN_NEXT)
+  
+  def openPrevImage(self):
+    self.openNearImage(OPEN_PREV)
+  
+  def openNearImage(self, open_type):
+    current_name = self.current_image.getName()
+    current_folder = self.current_image.getFolder()
+    next = False
+    next_image = None
+    prev_image = None
+    position = 1
+    for filename in self.files_in_folder:
+      if next:
+        next_image = os.path.join(current_folder, filename)
+        next_position = position
+        break
+      if filename == current_name:
+        next = True
+      else:
+        prev_image = os.path.join(current_folder, filename)
+        prev_position = position
+      position += 1
+    # Go to previous folder / next folder
+    if open_type == OPEN_PREV and prev_image is None:
+      prev_image, prev_position = self.openUpperFolder(open_type)
+      if prev_image is not None:
+        # set inotify
+        self.inotifyRemove(current_folder)
+        self.inotifyAdd(os.path.dirname(prev_image))
+    elif open_type == OPEN_NEXT and next_image is None:
+      next_image, next_position = self.openUpperFolder(open_type)
+      if next_image is not None:
+        # set inotify
+        self.inotifyRemove(current_folder)
+        self.inotifyAdd(os.path.dirname(next_image))
+    
+    # Set image and open
+    if open_type == OPEN_NEXT and next_image is not None:
+      self.current_image = self.openImage(next_image, next_position)
+      # open with interface
+      self.interface.openImage(self.current_image)
+    elif open_type == OPEN_PREV and prev_image is not None:
+      self.current_image = self.openImage(prev_image, prev_position)
+      # open with interface
+      self.interface.openImage(self.current_image)
+  
+  def openUpperFolder(self, get):
+    # Get all the files/folders
+    folder = os.path.dirname(self.current_image.getFolder())
+    current_folder_name = os.path.basename(self.current_image.getFolder())
+    files = self.readFolder(folder, True)
+    # Reverse the array if get prev
+    if get == OPEN_PREV:
+      files.reverse()
+    # Get the first valid element
+    next = False
+    element = None
+    for filename in files:
+      if filename == current_folder_name:
+        next = True
+      elif next:
+        # check if the element is valid
+        candidate_path = os.path.join(folder, filename)
+        if os.path.isdir(candidate_path):
+          # read folder
+          el_files = self.readFolder(candidate_path)
+          if len(el_files) > 0:
+            self.files_in_folder = el_files
+            position = 0 if get == OPEN_NEXT else -1
+            element = os.path.join(candidate_path, el_files[position])
+            break
+        '''
+        # Note: I do not consider files while reading the upper folder
+        # because I read only files on the same level
+        # i.e. files in the folders ~/Pictures/ and ~/Documents
+        # are on the same level, pictures in
+        # ~/Pictures and ~/Pictures/ex1 are not.
+        else:
+          # reorder the files correctly
+          if get == OPEN_PREV:
+            files.reverse()
+          self.files_in_folder = self.removeFoldersFromArray(files)
+          element = candidate_path
+        break
+        '''
+    # get element position
+    if element is None:
+      position = 0
+    elif get == OPEN_NEXT:
+      position = 1
+    elif get == OPEN_PREV:
+      position = len(self.files_in_folder)
+    # element is the new image,
+    # position is its position in the folder
+    return element, position
+    
+  def openImage(self, path, position=None):
+    img = IWImage(path)
+    if position is not None:
+      img.setPosition(position)
+    return img
+  
+  def isSupportedExtension(self, ext):
+    return ext.lower() in SUPPORTED_STATIC or ext.lower() in SUPPORTED_ANIMATION
+  
+  def readFolder(self, folder, include_folders=False):
+    all_files = os.listdir(folder)
+    folders = {}
+    folders_keys = []
+    if include_folders:
+      for filename in all_files:
+        if filename[0] == '.':
+          continue
+        filepath = os.path.join(folder, filename)
+        if os.path.isdir(filepath):
+          f_lower = filename.lower()
+          if f_lower in folders:
+            folders[f_lower].append(filename)
+          else:
+            folders[f_lower] = [filename]
+      folders_keys = natsorted(folders.keys())
+    valid_files = {}
+    valid_files_keys = []
+    for filename in all_files:
+      if filename[0] == '.':
+        continue
+      _, ext = os.path.splitext(filename)
+      if self.isSupportedExtension(ext):
+        f_lower = filename.lower()
+        if f_lower in valid_files:
+          valid_files[f_lower].append(filename)
+        else:
+          valid_files[f_lower] = [filename]
+    valid_files_keys = natsorted(valid_files.keys())
+    # Compose
+    sorted_files = []
+    for el in folders_keys:
+      fls = folders[el]
+      fls.sort()
+      sorted_files.extend(fls)
+    for el in valid_files_keys:
+      fls = valid_files[el]
+      fls.sort()
+      sorted_files.extend(fls)
+    return sorted_files
+  
+  '''
+  def removeFoldersFromArray(self, files):
+    # NOTE: the input must be in the format given by
+    # self.readFolder
+    new_array = []
+    for el in files:
+      if os.path.isdir(el):
+        break
+      else:
+        new_array.append(el)
+    return new_array
+  '''
+  
+  def setCurrentImagePosition(self):
+    position = 1
+    for filename in self.files_in_folder:
+      if filename == self.current_image.getName():
+        self.current_image.setPosition(position)
+        break
+      position += 1
+  
+  def getTotImages(self):
+    return len(self.files_in_folder)
+  
+  def addToFilelist(self, path):
+    # TODO: better, this is kinda lazy
+    current_folder = os.path.dirname(path)
+    self.files_in_folder = self.readFolder(current_folder)
+    # update interface
+    self.updateFolderData()
+  
+  def removeFromFilelist(self, path):
+    filename = os.path.basename(path)
+    if filename in self.files_in_folder:
+      self.files_in_folder.remove(filename)
+      # update interface
+      self.updateFolderData()
+  
+  def updateFolderData(self):
+    self.setCurrentImagePosition()
+    self.interface.fillInfo()
+  
+  def folderIsEmpty(self, folder):
+    return len(os.listdir(folder)) == 0
+    
+def new(*args, **kwargs):
+  iw = ImageViewer(*args, **kwargs)
+  return iw
