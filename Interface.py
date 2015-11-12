@@ -65,11 +65,13 @@ class Interface():
     
     self.main_window = self.builder.get_object('MainWindow')
     self.image_widget = self.builder.get_object('Image')
+    #self.main_window.add_events(Gdk.EventMask.STRUCTURE_MASK)
     self.main_window.set_size_request(*DEFAULT_SIZE)
     self.main_window.set_title('Image Viewer')
     self.main_window.connect('destroy', self.close)
     self.main_window.connect('key-press-event', self.monitorKeyboard)
     self.main_window.connect('configure-event', self.updateWindowSize)
+    self.main_window.connect('window-state-event', self.onMainWindowChange)
     
     self.width = 0
     self.height = 0
@@ -156,12 +158,18 @@ class Interface():
     accels.connect(key, mod, Gtk.AccelFlags.LOCKED, self.forceFitImageToWindow)
     self.main_window.add_accel_group(accels)
   
+  def onMainWindowChange(self, widget, event):
+    if(event.get_event_type() == Gdk.EventType.WINDOW_STATE):
+      if(event.changed_mask == Gdk.WindowState.FULLSCREEN):
+        # wait for the window changes to have taken effect
+        GObject.timeout_add(100, self.fitImageToWindow)
+    return False
+  
   def toggleFullscreen(self):
     if self.main_window_fullscreen:
       self.modeFullscreen(False)
     else:
       self.modeFullscreen(True)
-    GObject.timeout_add(50, self.fitImageToWindow)
   
   def modeFullscreen(self, fullscreen):
     info_grid = self.builder.get_object("InfoGrid")
@@ -237,7 +245,6 @@ class Interface():
     
   def openStaticImage(self):
     self.image_widget.set_from_pixbuf(self.image.getPixbuf())
-    self.fitImageToWindow()
   
   def openAnimation(self):
     self.image_widget.set_from_animation(self.image.getPixbuf())
@@ -458,7 +465,7 @@ class Interface():
   def fillNavigatorInfo(self):
     label = self.builder.get_object('InfoNavigator')
     tot = self.image_viewer.getTotImages()
-    label_str = str(self.image.getPosition()) + '/' + str(tot)
+    label_str = str(self.image.getPosition() + 1) + '/' + str(tot)
     label.set_text(label_str)
   
   def fillZoomInfo(self):

@@ -220,10 +220,10 @@ class ImageViewer():
   
   def start(self, imagepath=None):
     if imagepath is not None:
-      self.current_image = self.openImage(imagepath)
-      current_folder = self.current_image.getFolder()
-      self.inotifyAdd(current_folder)
+      current_folder = os.path.dirname(imagepath)
       self.files_in_folder = self.readFolder(current_folder)
+      self.current_image = self.openImage(imagepath)
+      self.inotifyAdd(current_folder)
       self.setCurrentImagePosition()
     self.interface.start(self.current_image)
   
@@ -256,44 +256,34 @@ class ImageViewer():
   def openNearImage(self, open_type):
     current_name = self.current_image.getName()
     current_folder = self.current_image.getFolder()
-    next = False
-    next_image = None
-    prev_image = None
-    position = 1
-    for filename in self.files_in_folder:
-      if next:
-        next_image = os.path.join(current_folder, filename)
-        next_position = position
-        break
-      if filename == current_name:
-        next = True
-      else:
-        prev_image = os.path.join(current_folder, filename)
-        prev_position = position
-      position += 1
-    # Go to previous folder / next folder
-    if open_type == OPEN_PREV and prev_image is None:
-      prev_image, prev_position = self.openUpperFolder(open_type)
-      if prev_image is not None:
-        # set inotify
-        self.inotifyRemove(current_folder)
-        self.inotifyAdd(os.path.dirname(prev_image))
-    elif open_type == OPEN_NEXT and next_image is None:
-      next_image, next_position = self.openUpperFolder(open_type)
-      if next_image is not None:
-        # set inotify
-        self.inotifyRemove(current_folder)
-        self.inotifyAdd(os.path.dirname(next_image))
+    current_position = self.current_image.getPosition()
+    # set up new image variables
+    new_image = None
+    if open_type == OPEN_NEXT:
+      new_position = current_position + 1
+    else:
+      new_position = current_position - 1
     
-    # Set image and open
-    if open_type == OPEN_NEXT and next_image is not None:
-      self.current_image = self.openImage(next_image, next_position)
-      # open with interface
+    # get new image
+    if new_position >= 0 and new_position < len(self.files_in_folder):
+      new_image = os.path.join(current_folder, self.files_in_folder[new_position])
+    else:
+      new_image = None
+      new_position = -1
+    
+    # open pallel folder if necessary
+    if new_image is None:
+      new_image, new_position = self.openUpperFolder(open_type)
+      if new_image is not None:
+        # update inotify
+        self.inotifyRemove(current_folder)
+        self.inotifyAdd(os.path.dirname(new_image))
+    
+    # set new current image and open with the interface
+    if new_image is not None:
+      self.current_image = self.openImage(new_image, new_position)
       self.interface.openImage(self.current_image)
-    elif open_type == OPEN_PREV and prev_image is not None:
-      self.current_image = self.openImage(prev_image, prev_position)
-      # open with interface
-      self.interface.openImage(self.current_image)
+      
   
   def openUpperFolder(self, get):
     # Get all the files/folders
@@ -336,20 +326,32 @@ class ImageViewer():
         '''
     # get element position
     if element is None:
-      position = 0
+      position = -1
     elif get == OPEN_NEXT:
-      position = 1
+      position = 0
     elif get == OPEN_PREV:
-      position = len(self.files_in_folder)
+      position = len(self.files_in_folder) - 1
     # element is the new image,
-    # position is its position in the folder
+    # position is its index in the folder files
     return element, position
     
   def openImage(self, path, position=None):
     img = IWImage(path)
-    if position is not None:
-      img.setPosition(position)
+    if position is None:
+      # get image position
+      position = self.getFilePosition(path)
+    img.setPosition(position)
     return img
+  
+  def getFilePosition(self, path):
+    # NOTE: assume self.files_in_folder is correct
+    basename = os.path.basename(path)
+    if basename in self.files_in_folder:
+      return self.files_in_folder.index(basename)
+    else:
+      # error
+      return -1
+    
   
   def isSupportedExtension(self, ext):
     return ext.lower() in SUPPORTED_STATIC or ext.lower() in SUPPORTED_ANIMATION
@@ -409,12 +411,12 @@ class ImageViewer():
   '''
   
   def setCurrentImagePosition(self):
-    position = 1
-    for filename in self.files_in_folder:
-      if filename == self.current_image.getName():
-        self.current_image.setPosition(position)
-        break
-      position += 1
+    basename = self.current_image.getName()
+    if basename in self.files_in_folder:
+      position = self.files_in_folder.index(basename)
+      self.current_image.setPosition(position)
+    else:
+      self.current_image.setPosition(-1)
   
   def getTotImages(self):
     return len(self.files_in_folder)
