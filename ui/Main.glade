@@ -5,7 +5,7 @@
   <object class="GtkWindow" id="MainWindow">
     <property name="can_focus">False</property>
     <property name="window_position">center</property>
-    <property name="icon">/usr/share/image-viewer/icons/icon.png</property>
+    <property name="icon">/usr/share/iw-image-viewer/icons/icon.png</property>
     <child>
       <object class="GtkBox" id="MainBox">
         <property name="visible">True</property>
