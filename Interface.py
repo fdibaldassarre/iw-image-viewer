@@ -59,6 +59,11 @@ class Interface():
 
   def __init__(self, image_viewer):
     self.image_viewer = image_viewer
+    
+    # set program class
+    Gdk.set_program_class("IW Image Viewer")
+    
+    # setup ui builder
     self.builder = Gtk.Builder.new()
     ui_file = os.path.join(MAIN_FOLDER, 'ui/Main.glade')
     self.builder.add_from_file(ui_file)
