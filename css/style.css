@@ -1,6 +1,15 @@
 
+@define-color bg_colour #ffffff;
+
 .scroll-window {
   background-color: #000000;
+}
+#image{
+  background-color: @bg_colour;
+}
+#image-checked {
+  background-image: url('pattern16.png');
+  background-repeat: repeat;
 }
 .info-label {
   padding-left: 10px;

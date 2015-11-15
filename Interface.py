@@ -16,7 +16,7 @@ MISSING_IMAGE_ICON = 'gtk-missing-image'
 
 MOUSE_DELTA_INCREMENT = 1
 
-MAX_ZOOM = 3.0
+MAX_ZOOM = 5.0
 MIN_ZOOM = 0.02
 MIN_CONTENT_SIZE = 10
 
@@ -67,9 +67,12 @@ class Interface():
     self.builder = Gtk.Builder.new()
     ui_file = os.path.join(MAIN_FOLDER, 'ui/Main.glade')
     self.builder.add_from_file(ui_file)
+    header_file = os.path.join(MAIN_FOLDER, 'ui/HeaderBar.glade')
+    self.builder.add_from_file(header_file)
     
     self.main_window = self.builder.get_object('MainWindow')
     self.image_widget = self.builder.get_object('Image')
+    self.image_widget.set_name('image-checked')
     #self.main_window.add_events(Gdk.EventMask.STRUCTURE_MASK)
     self.main_window.set_size_request(*DEFAULT_SIZE)
     self.main_window.set_title('Image Viewer')
@@ -94,6 +97,7 @@ class Interface():
     
     self.loadCss()
     self.loadAccels()
+    #self.setupHeaderBar()
     
     self.main_window_fullscreen = False
     
@@ -126,13 +130,41 @@ class Interface():
   def show(self):
     self.main_window.show()
   
+  def setupHeaderBar(self):
+    btn = self.builder.get_object('SettingsButton')
+    btn.connect('clicked', self.openSettings)
+    header_bar = self.builder.get_object('HeaderBar')
+    self.main_window.set_titlebar(header_bar)
+  
   def loadCss(self):
+    provider = self._addCssProvider()
+    css_file = os.path.join(MAIN_FOLDER, 'css/style.css')
+    provider.load_from_path(css_file)
+  
+  def openSettings(self, *args):
+    settings_win = self.builder.get_object('SettingsWindow')
+    settings_win.show()
+  
+  def changeImageBG(self, colour):
+    # colour should be Gdk.RGBA
+    colour_rgb = colour.to_string() 
+    # get style provider
+    provider = self._addCssProvider()
+    # set class
+    data = '#image{background-color: ' + colour_rgb + ';}'
+    provider.load_from_data(bytes(data.encode()))
+    # change image widget name
+    self.image_widget.set_name('image')
+  
+  def changeImageBGCheckPattern(self):
+    self.image_widget.set_name('image-checked')
+  
+  def _addCssProvider(self):
     display = Gdk.Display.get_default()
     screen = Gdk.Display.get_default_screen(display)
     provider = Gtk.CssProvider()
     Gtk.StyleContext.add_provider_for_screen(screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-    css_file = os.path.join(MAIN_FOLDER, 'css/style.css')
-    provider.load_from_path(css_file)
+    return provider
   
   def start(self, image):
     self.inotify_timeout = GObject.timeout_add(500, self.checkInotify)
@@ -210,7 +242,7 @@ class Interface():
       return True
     self.image = image
     self.imageQuickSetup()
-    self.current_factor = 0
+    self.current_factor = 1.0
     self.user_set_zoom = False
     if self.open_image_timeout is not None:
       GObject.source_remove(self.open_image_timeout)
@@ -399,10 +431,13 @@ class Interface():
     adjust = scrolled_window.get_vadjustment()
     height = adjust.get_page_size()
     img_width, img_height = self.image.getSize()
-    if not self.user_set_zoom and (img_width > width-5 or img_height > height-5):
-      self.zoom((width-5, height-5))
-    else:
-      self.current_factor = 1.0
+    if not self.user_set_zoom:
+      if img_width > width-5 or img_height > height-5:
+        # zoom to window size
+        self.zoom((width-5, height-5))
+      else:
+        # zoom to image size
+        self.zoom((img_width, img_height))
   
   @imageIsResizable
   def zoomIn(self):
