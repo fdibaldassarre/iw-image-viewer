@@ -8,7 +8,7 @@
   background-color: @bg_colour;
 }
 #image-checked {
-  background-image: url('pattern16.png');
+  background-image: url('pattern.png');
   background-repeat: repeat;
 }
 .info-label {
