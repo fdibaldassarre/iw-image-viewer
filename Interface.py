@@ -72,7 +72,7 @@ class Interface():
     
     self.main_window = self.builder.get_object('MainWindow')
     self.image_widget = self.builder.get_object('Image')
-    self.image_widget.set_name('image-checked')
+    #self.image_widget.set_name('image-checked')
     #self.main_window.add_events(Gdk.EventMask.STRUCTURE_MASK)
     self.main_window.set_size_request(*DEFAULT_SIZE)
     self.main_window.set_title('Image Viewer')
@@ -98,6 +98,7 @@ class Interface():
     self.loadCss()
     self.loadAccels()
     #self.setupHeaderBar()
+    self.applyColourSettings()
     
     self.main_window_fullscreen = False
     
@@ -123,41 +124,32 @@ class Interface():
     # Timeouts
     self.open_image_timeout = None
     self.inotify_timeout = None
-    
-  def resize(self, size):
-    self.main_window.resize(*size)
   
-  def show(self):
-    self.main_window.show()
-  
+  ######################
+  ## Setup header bar ##
+  ######################
+  ## TODO: Work in progress
   def setupHeaderBar(self):
     btn = self.builder.get_object('SettingsButton')
     btn.connect('clicked', self.openSettings)
     header_bar = self.builder.get_object('HeaderBar')
     self.main_window.set_titlebar(header_bar)
   
+  ###########################
+  ## Setup settings window ##
+  ###########################
+  ## TODO: Work in progress
+  def openSettings(self, *args):
+    settings_win = self.builder.get_object('SettingsWindow')
+    settings_win.show_all()
+  
+  ################
+  ## Load style ##
+  ################
   def loadCss(self):
     provider = self._addCssProvider()
     css_file = os.path.join(MAIN_FOLDER, 'css/style.css')
     provider.load_from_path(css_file)
-  
-  def openSettings(self, *args):
-    settings_win = self.builder.get_object('SettingsWindow')
-    settings_win.show()
-  
-  def changeImageBG(self, colour):
-    # colour should be Gdk.RGBA
-    colour_rgb = colour.to_string() 
-    # get style provider
-    provider = self._addCssProvider()
-    # set class
-    data = '#image{background-color: ' + colour_rgb + ';}'
-    provider.load_from_data(bytes(data.encode()))
-    # change image widget name
-    self.image_widget.set_name('image')
-  
-  def changeImageBGCheckPattern(self):
-    self.image_widget.set_name('image-checked')
   
   def _addCssProvider(self):
     display = Gdk.Display.get_default()
@@ -166,6 +158,42 @@ class Interface():
     Gtk.StyleContext.add_provider_for_screen(screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
     return provider
   
+  def applyColourSettings(self):
+    col = self.image_viewer.getInterfaceBGColour()
+    self.changeMainBG(col)
+    if self.image_viewer.isInterfaceImageBGAsMain():
+      self.changeImageBG(col)
+    elif self.image_viewer.isInterfaceImageBGPattern():
+      self.changeImageBGCheckPattern()
+    else:
+      col = self.getInterfaceImageBGColour()
+      self.changeImageBG(col)
+  
+  #######################
+  ## Change BG colours ##
+  #######################
+  def changeMainBG(self, colour):
+    self.changeClassBGColour('MainView', colour)
+  
+  def changeImageBG(self, colour):
+    self.changeClassBGColour('image', colour)
+    self.image_widget.set_name('image')
+  
+  def changeClassBGColour(self, class_name, colour):
+    # colour should be Gdk.RGBA
+    colour_rgb = colour.to_string() 
+    # get style provider
+    provider = self._addCssProvider()
+    # set class
+    data = '#' + class_name + '{background-color: ' + colour_rgb + ';}'
+    provider.load_from_data(bytes(data.encode()))
+  
+  def changeImageBGCheckPattern(self):
+    self.image_widget.set_name('image-checked')
+  
+  ###################
+  ## Main controls ##
+  ###################
   def start(self, image):
     self.inotify_timeout = GObject.timeout_add(500, self.checkInotify)
     GObject.timeout_add(50, self.openImage, image)
@@ -177,6 +205,15 @@ class Interface():
     self.image_viewer.close()
     Gtk.main_quit()
   
+  def resize(self, size):
+    self.main_window.resize(*size)
+  
+  def show(self):
+    self.main_window.show()
+  
+  #############
+  ## Inotify ##
+  #############
   def checkInotify(self):
     notifier = self.image_viewer.pyinotify_notifier
     notifier.process_events()
@@ -185,16 +222,9 @@ class Interface():
       notifier.process_events()
     return True
   
-  def loadAccels(self):
-    accels = Gtk.AccelGroup()
-    accelerator = '<control>q'
-    key, mod = Gtk.accelerator_parse(accelerator)
-    accels.connect(key, mod, Gtk.AccelFlags.LOCKED, self.close)
-    accelerator = '<control>0'
-    key, mod = Gtk.accelerator_parse(accelerator)
-    accels.connect(key, mod, Gtk.AccelFlags.LOCKED, self.forceFitImageToWindow)
-    self.main_window.add_accel_group(accels)
-  
+  #########################
+  ## Window size changes ##
+  #########################
   def onMainWindowChange(self, widget, event):
     if(event.get_event_type() == Gdk.EventType.WINDOW_STATE):
       if(event.changed_mask == Gdk.WindowState.FULLSCREEN):
@@ -225,6 +255,9 @@ class Interface():
       self.height = event.height
     return False
   
+  #####################
+  ## Get window size ##
+  #####################
   def getSize(self):
     if self.width == 0 or self.height == 0:
       return self.main_window.get_size()
@@ -234,6 +267,9 @@ class Interface():
   def getFullscreen(self):
     return self.main_window_fullscreen
   
+  ################
+  ## Open image ##
+  ################
   def openImage(self, image):
     if image is None:
       # show error widget
@@ -260,7 +296,6 @@ class Interface():
     self.setEmptyInfo()
     self.fillNavigatorInfo()
     
-  
   def openImageReal(self):
     self.image_widget.show()
     if self.image.isStatic():
@@ -294,6 +329,19 @@ class Interface():
   def prevImage(self):
     self.image_viewer.openPrevImage()
   
+  ########################
+  ## Keyboard shortcuts ##
+  ########################
+  def loadAccels(self):
+    accels = Gtk.AccelGroup()
+    accelerator = '<control>q'
+    key, mod = Gtk.accelerator_parse(accelerator)
+    accels.connect(key, mod, Gtk.AccelFlags.LOCKED, self.close)
+    accelerator = '<control>0'
+    key, mod = Gtk.accelerator_parse(accelerator)
+    accels.connect(key, mod, Gtk.AccelFlags.LOCKED, self.forceFitImageToWindow)
+    self.main_window.add_accel_group(accels)
+  
   def monitorKeyboard(self, widget, event):
     _, key_val = event.get_keyval()
     if key_val == Gdk.KEY_Right:
@@ -314,6 +362,9 @@ class Interface():
       self.toggleFullscreen()
     return False
   
+  ##########
+  ## Drag ##
+  ##########
   def startDrag(self, widget, event):
     self.drag = True
     self.drag_x = event.x
@@ -351,6 +402,9 @@ class Interface():
     else:
       self.changeCursorType(Gdk.CursorType.LEFT_PTR)
   
+  ##################
+  ## Mouse cursor ##
+  ##################
   def showPointer(self, show):
     if show:
       if not self.drag:
@@ -373,10 +427,27 @@ class Interface():
         self.showPointer(False)
     return True
   
+  ###############
+  ## Scrolling ##
+  ###############
   def scrollVertical(self, increment):
     scrolled_window = self.builder.get_object('ScrolledWindow')
     adjust = scrolled_window.get_vadjustment()
     adjust.set_value( adjust.get_value() + increment )
+  
+  def scrollRelativeToMouse(self, widget, position_type):
+    self.scroll_zoom_number = 0
+    if position_type == SCROLL_ADJUST_HORIZONTAL and self.scroll_position_x > -1:
+      position = self.scroll_position_x
+      self.scroll_position_x = -1
+    elif position_type == SCROLL_ADJUST_VERTICAL and self.scroll_position_y > -1:
+      position = self.scroll_position_y
+      self.scroll_position_y = -1
+    else:
+      position = -1
+    if position > -1:
+      widget.set_value(position)
+    return False
   
   def scroll(self, widget, scroll_event):
     if self.image_widget is None:
@@ -418,6 +489,9 @@ class Interface():
       self.scroll_position_y = zoomed_y - y_m
     return True
   
+  ##########
+  ## Zoom ##
+  ##########
   @imageIsResizable
   def forceFitImageToWindow(self, *args):
     self.user_set_zoom = False
@@ -482,20 +556,9 @@ class Interface():
     # Image updated
     return True
   
-  def scrollRelativeToMouse(self, widget, position_type):
-    self.scroll_zoom_number = 0
-    if position_type == SCROLL_ADJUST_HORIZONTAL and self.scroll_position_x > -1:
-      position = self.scroll_position_x
-      self.scroll_position_x = -1
-    elif position_type == SCROLL_ADJUST_VERTICAL and self.scroll_position_y > -1:
-      position = self.scroll_position_y
-      self.scroll_position_y = -1
-    else:
-      position = -1
-    if position > -1:
-      widget.set_value(position)
-    return False
-  
+  ##############
+  ## Info bar ##
+  ##############
   def fillInfo(self):
     # Fill image navigator
     self.fillNavigatorInfo()

@@ -1,11 +1,9 @@
 
-@define-color bg_colour #ffffff;
-
-.scroll-window {
+#MainView{
   background-color: #000000;
 }
 #image{
-  background-color: @bg_colour;
+  background-color: #000000;
 }
 #image-checked {
   background-image: url('pattern.png');

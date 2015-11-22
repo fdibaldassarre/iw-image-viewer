@@ -5,6 +5,7 @@ import configparser
 from natsort import natsorted
 from Interface import Interface
 
+from gi.repository import Gdk
 from gi.repository import GdkPixbuf
 
 import pyinotify
@@ -18,8 +19,20 @@ CONFIG_SECTION_PREFS = 'Preferences'
 CONFIG_WINDOW_WIDTH = 'Window_width'
 CONFIG_WINDOW_HEIGHT = 'Window_height'
 CONFIG_WINDOW_FULLSCREEN = 'Window_fullscreen'
+CONFIG_BG_COLOUR = 'BG_colour'
+CONFIG_IMAGE_BG_TYPE = 'BG_image_type'
+CONFIG_IMAGE_BG_COLOUR = 'BG_image_colour'
 
-DEFAULT_CONFIG = {CONFIG_WINDOW_WIDTH : '100', CONFIG_WINDOW_HEIGHT : '100', CONFIG_WINDOW_FULLSCREEN : 'False'}
+IMAGE_BG_TYPE_COLOUR = 'colour'
+IMAGE_BG_TYPE_PATTERN = 'pattern'
+IMAGE_BG_TYPE_SAME_APP = 'same_main'
+
+DEFAULT_CONFIG = {CONFIG_WINDOW_WIDTH : '100',
+                  CONFIG_WINDOW_HEIGHT : '100',
+                  CONFIG_WINDOW_FULLSCREEN : 'False',
+                  CONFIG_BG_COLOUR : 'rgb(0,0,0)',
+                  CONFIG_IMAGE_BG_TYPE : IMAGE_BG_TYPE_PATTERN,
+                  CONFIG_IMAGE_BG_COLOUR : 'rgb(0,0,0)'}
 
 SUPPORTED_STATIC = ['.png', '.jpg', '.jpeg', '.bmp']
 SUPPORTED_ANIMATION = ['.gif']
@@ -198,6 +211,12 @@ class ImageViewer():
   def getConfigInt(self, param):
     return int(self.config.get(CONFIG_SECTION_DEFAULT, param))
   
+  def getConfigColour(self, param):
+    col_str = self.getConfig(param)
+    colour = Gdk.RGBA()
+    colour.parse(col_str)
+    return colour
+  
   def getConfigBool(self, param):
     if self.config.get(CONFIG_SECTION_DEFAULT, param).lower() == 'true':
       return True
@@ -218,6 +237,39 @@ class ImageViewer():
     self.interface.modeFullscreen(fullscreen)
     self.interface.show()
   
+  ## CONFIG INTERFACE GET
+  def getInterfaceBGColour(self):
+    return self.getConfigColour(CONFIG_BG_COLOUR)
+  
+  def isInterfaceImageBGPattern(self):
+    return self.getConfig(CONFIG_IMAGE_BG_TYPE) == IMAGE_BG_TYPE_PATTERN
+  
+  def isInterfaceImageBGAsMain(self):
+    return self.getConfig(CONFIG_IMAGE_BG_TYPE) == IMAGE_BG_TYPE_SAME_APP
+  
+  def isInterfaceImageBGColour(self):
+    return self.getConfig(CONFIG_IMAGE_BG_TYPE) == IMAGE_BG_TYPE_COLOUR
+  
+  def getInterfaceImageBGColour(self):
+    return self.getConfigColour(CONFIG_IMAGE_BG_COLOUR)
+  
+  ## CONFIG INTERFACE SET
+  def setInterfaceBGColour(self, colour):
+    self.setConfig(CONFIG_BG_COLOUR, colour.to_string())
+    
+  def setInterfaceImageBGTypePattern(self):
+    self.setConfig(CONFIG_IMAGE_BG_TYPE, IMAGE_BG_TYPE_PATTERN)
+  
+  def setInterfaceImageBGTypeAsMain(self):
+    self.setConfig(CONFIG_IMAGE_BG_TYPE, IMAGE_BG_TYPE_AS_APP)
+  
+  def setInterfaceImageBGTypeColour(self):
+    self.setConfig(CONFIG_IMAGE_BG_TYPE, IMAGE_BG_TYPE_COLOUR)
+  
+  def setInterfaceImageBGColour(self):
+    self.setConfig(CONFIG_IMAGE_BG_COLOUR, colour.to_string())
+  
+  ## START
   def start(self, imagepath=None):
     if imagepath is not None:
       current_folder = os.path.dirname(imagepath)
