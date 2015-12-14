@@ -157,7 +157,7 @@ class Interface():
     
     self.loadCss()
     self.loadAccels()
-    #self.setupHeaderBar()
+    self.setupHeaderBar()
     self.applyColourSettings()
     self.setupSettingsWindow()
     

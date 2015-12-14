@@ -43,6 +43,8 @@ ANIMATION_DELAY = 1 / ANIMATION_RATE
 
 INOTIFY_TIMEOUT = 10 # Keep this number low
 
+SIZE_DIFF = 112 # This size diff is due to the HeaderBar
+
 
 ## Inotify Handler
 class InotifyEventHandler(pyinotify.ProcessEvent):
@@ -231,11 +233,13 @@ class ImageViewer():
     self.config.write(open(self.config_file, 'w'))
   
   def setupInterface(self):
-    request_size = (self.getConfigInt(CONFIG_WINDOW_WIDTH), self.getConfigInt(CONFIG_WINDOW_HEIGHT))
+    width = self.getConfigInt(CONFIG_WINDOW_WIDTH)
+    height = self.getConfigInt(CONFIG_WINDOW_HEIGHT)
+    request_size = (width, height)
     self.interface = Interface(self)
     self.interface.resize(request_size)
-    fullscreen = self.getConfigBool(CONFIG_WINDOW_FULLSCREEN)
-    self.interface.modeFullscreen(fullscreen)
+    if self.getConfigBool(CONFIG_WINDOW_FULLSCREEN):
+      self.interface.modeFullscreen(True)
     self.interface.show()
   
   ## CONFIG INTERFACE GET
