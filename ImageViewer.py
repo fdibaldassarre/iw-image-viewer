@@ -25,7 +25,7 @@ CONFIG_IMAGE_BG_COLOUR = 'BG_image_colour'
 
 IMAGE_BG_TYPE_COLOUR = 'colour'
 IMAGE_BG_TYPE_PATTERN = 'pattern'
-IMAGE_BG_TYPE_SAME_APP = 'same_main'
+IMAGE_BG_TYPE_AS_APP = 'same_main'
 
 DEFAULT_CONFIG = {CONFIG_WINDOW_WIDTH : '100',
                   CONFIG_WINDOW_HEIGHT : '100',
@@ -42,6 +42,7 @@ ANIMATION_RATE = 60.0 # 60 FPS (too high?)
 ANIMATION_DELAY = 1 / ANIMATION_RATE
 
 INOTIFY_TIMEOUT = 10 # Keep this number low
+
 
 ## Inotify Handler
 class InotifyEventHandler(pyinotify.ProcessEvent):
@@ -245,7 +246,7 @@ class ImageViewer():
     return self.getConfig(CONFIG_IMAGE_BG_TYPE) == IMAGE_BG_TYPE_PATTERN
   
   def isInterfaceImageBGAsMain(self):
-    return self.getConfig(CONFIG_IMAGE_BG_TYPE) == IMAGE_BG_TYPE_SAME_APP
+    return self.getConfig(CONFIG_IMAGE_BG_TYPE) == IMAGE_BG_TYPE_AS_APP
   
   def isInterfaceImageBGColour(self):
     return self.getConfig(CONFIG_IMAGE_BG_TYPE) == IMAGE_BG_TYPE_COLOUR
@@ -266,7 +267,7 @@ class ImageViewer():
   def setInterfaceImageBGTypeColour(self):
     self.setConfig(CONFIG_IMAGE_BG_TYPE, IMAGE_BG_TYPE_COLOUR)
   
-  def setInterfaceImageBGColour(self):
+  def setInterfaceImageBGColour(self, colour):
     self.setConfig(CONFIG_IMAGE_BG_COLOUR, colour.to_string())
   
   ## START

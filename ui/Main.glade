@@ -6,6 +6,10 @@
     <property name="can_focus">False</property>
     <property name="window_position">center</property>
     <property name="icon">/usr/share/iw-image-viewer/icons/icon.png</property>
+    <signal name="configure-event" handler="updateWindowSize" swapped="no"/>
+    <signal name="destroy" handler="closeMain" swapped="no"/>
+    <signal name="key-press-event" handler="monitorKeyboard" swapped="no"/>
+    <signal name="window-state-event" handler="onMainWindowChange" swapped="no"/>
     <child>
       <object class="GtkBox" id="MainBox">
         <property name="visible">True</property>
@@ -17,6 +21,10 @@
             <property name="can_focus">True</property>
             <property name="hexpand">True</property>
             <property name="vexpand">True</property>
+            <signal name="button-press-event" handler="imageStartDrag" swapped="no"/>
+            <signal name="button-release-event" handler="imageStopDrag" swapped="no"/>
+            <signal name="motion-notify-event" handler="imageDrag" swapped="no"/>
+            <signal name="scroll-event" handler="imageScroll" swapped="no"/>
             <child>
               <object class="GtkViewport" id="viewport">
                 <property name="name">MainView</property>
@@ -132,6 +140,7 @@
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
+                <signal name="color-set" handler="settingsChangeMainBG" swapped="no"/>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -176,6 +185,7 @@
                 <property name="xalign">1</property>
                 <property name="active">True</property>
                 <property name="draw_indicator">True</property>
+                <signal name="toggled" handler="settingsToggleTrasparency" swapped="no"/>
               </object>
               <packing>
                 <property name="left_attach">0</property>
@@ -192,6 +202,7 @@
                 <property name="active">True</property>
                 <property name="draw_indicator">True</property>
                 <property name="group">ImageBGTypeCheck</property>
+                <signal name="toggled" handler="settingsToggleAsMain" swapped="no"/>
               </object>
               <packing>
                 <property name="left_attach">0</property>
@@ -208,6 +219,7 @@
                 <property name="active">True</property>
                 <property name="draw_indicator">True</property>
                 <property name="group">ImageBGTypeCheck</property>
+                <signal name="toggled" handler="settingsToggleImageBGColor" swapped="no"/>
               </object>
               <packing>
                 <property name="left_attach">0</property>
@@ -219,6 +231,7 @@
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
+                <signal name="color-set" handler="settingsChangeImageBGColor" swapped="no"/>
               </object>
               <packing>
                 <property name="left_attach">1</property>
@@ -244,6 +257,7 @@
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">True</property>
+            <signal name="clicked" handler="settingsClose" swapped="no"/>
           </object>
           <packing>
             <property name="expand">False</property>

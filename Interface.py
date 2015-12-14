@@ -53,6 +53,74 @@ def imageIsNotNone(method):
       return False
   return new
   
+
+## Signals Handler
+class SHandler():
+
+  def __init__(self, interface):
+    self.interface = interface 
+  
+  ## Main
+  def closeMain(self, *args):
+    self.interface.close()
+  
+  def monitorKeyboard(self, *args):
+    self.interface.monitorKeyboard(*args)
+  
+  def updateWindowSize(self, *args):
+    self.interface.updateWindowSize(*args)
+  
+  def onMainWindowChange(self, *args):
+    self.interface.onMainWindowChange(*args)
+  
+  ## Image
+  def imageScroll(self, *args):
+    self.interface.scroll(*args)
+  
+  def imageStartDrag(self, *args):
+    self.interface.startDrag(*args)
+  
+  def imageStopDrag(self, *args):
+    self.interface.stopDrag(*args)
+  
+  def imageDrag(self, *args):
+    self.interface.mouseDrag(*args)
+  
+  ## Settings
+  def settingsChangeMainBG(self, widget):
+    color = widget.get_rgba()
+    self.interface.modifyMainBG(color)
+    # apply
+    self.interface.applyColourSettings()
+  
+  def settingsToggleTrasparency(self, widget):
+    if widget.get_active():
+      self.interface.setImageBGCheckPattern()
+      # apply
+      self.interface.applyColourSettings()
+      
+  def settingsToggleAsMain(self, widget):
+    if widget.get_active():
+      self.interface.setImageBgAsMain()
+      # apply
+      self.interface.applyColourSettings()
+    
+  def settingsToggleImageBGColor(self, widget):
+    if widget.get_active():
+      self.interface.setImageBGAsCustom()
+      # apply
+      self.interface.applyColourSettings()
+  
+  def settingsChangeImageBGColor(self, widget):
+    color = widget.get_rgba()
+    self.interface.modifyImageBG(color)
+    # apply
+    self.interface.applyColourSettings()
+  
+  def settingsClose(self, *args):
+    self.interface.hideSettings()
+
+
 ## Interface class
 
 class Interface():
@@ -76,10 +144,6 @@ class Interface():
     #self.main_window.add_events(Gdk.EventMask.STRUCTURE_MASK)
     self.main_window.set_size_request(*DEFAULT_SIZE)
     self.main_window.set_title('Image Viewer')
-    self.main_window.connect('destroy', self.close)
-    self.main_window.connect('key-press-event', self.monitorKeyboard)
-    self.main_window.connect('configure-event', self.updateWindowSize)
-    self.main_window.connect('window-state-event', self.onMainWindowChange)
     
     self.width = 0
     self.height = 0
@@ -87,19 +151,15 @@ class Interface():
     scrolled_window = self.builder.get_object('ScrolledWindow')
     scrolled_window.set_min_content_width(MIN_CONTENT_SIZE)
     scrolled_window.set_min_content_height(MIN_CONTENT_SIZE)
-    scrolled_window.connect('scroll-event', self.scroll)
     scrolled_window.add_events(Gdk.EventMask.POINTER_MOTION_MASK | Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.BUTTON_RELEASE_MASK)
-    scrolled_window.connect("button-press-event", self.startDrag)
-    scrolled_window.connect("button-release-event", self.stopDrag)
-    scrolled_window.connect("motion-notify-event", self.mouseDrag)
     
     self.setErrorImage()
     
     self.loadCss()
     self.loadAccels()
-    self.setupHeaderBar()
-    self.setupSettingsWindow()
+    #self.setupHeaderBar()
     self.applyColourSettings()
+    self.setupSettingsWindow()
     
     self.main_window_fullscreen = False
     
@@ -125,50 +185,48 @@ class Interface():
     # Timeouts
     self.open_image_timeout = None
     self.inotify_timeout = None
+    
+    # Connect signals
+    self.builder.connect_signals(SHandler(self))
   
   ######################
   ## Setup header bar ##
   ######################
-  ## TODO: Work in progress
   def setupHeaderBar(self):
     btn = self.builder.get_object('SettingsButton')
     btn.connect('clicked', self.openSettings)
     header_bar = self.builder.get_object('HeaderBar')
     self.main_window.set_titlebar(header_bar)
   
-  def setupSettingsWindow(self):
-    settings_close = self.builder.get_object('SettingsClose')
-    settings_close.connect('clicked', self.hideSettings)
-    # buttons
-    # - main
-    change_bg = self.builder.get_object('BGColourButton')
-    change_bg.connect('color-set', self.changeMainBG)
-    # - trasparency
-    check_bg = self.builder.get_object('ImageBGTypeCheck')
-    check_bg.connect('toggled', self.toggleTrasparencyCheck)
-    same_main = self.builder.get_object('ImageBGTypeSameMain')
-    same_main.connect('toggled', self.toggleTrasparencySameMain)
-  
   ###########################
   ## Setup settings window ##
   ###########################
-  ## TODO: Work in progress
+  def setupSettingsWindow(self):
+    # change color buttons
+    ## main
+    main_btn = self.builder.get_object('BGColourButton')
+    col = self.image_viewer.getInterfaceBGColour()
+    main_btn.set_rgba(col)
+    ## image
+    img_btn = self.builder.get_object('ImageBGColourButton')
+    col = self.image_viewer.getInterfaceImageBGColour()
+    img_btn.set_rgba(col)
+    # toggle preferences
+    if self.image_viewer.isInterfaceImageBGAsMain():
+      btn = self.builder.get_object('ImageBGTypeSameMain')
+    elif self.image_viewer.isInterfaceImageBGPattern():
+      btn = self.builder.get_object('ImageBGTypeCheck')
+    else:
+      btn = self.builder.get_object('ImageBGTypeColour')
+    btn.set_active(True)
+    
   def openSettings(self, *args):
     settings_win = self.builder.get_object('SettingsWindow')
     settings_win.show_all()
   
-  def hideSettings(self, widget):
+  def hideSettings(self):
     settings_win = self.builder.get_object('SettingsWindow')
     settings_win.hide()
-  
-  def toggleTrasparencyCheck(self, widget):
-    if widget.get_active():
-      self.changeImageBGCheckPattern()
-  
-  def toggleTrasparencySameMain(self, widget):
-    if widget.get_active():
-      ## TODO: how do I do this???
-      self.changeImageBGCheckPattern()
   
   ################
   ## Load style ##
@@ -189,25 +247,50 @@ class Interface():
     col = self.image_viewer.getInterfaceBGColour()
     self.changeMainBG(col)
     if self.image_viewer.isInterfaceImageBGAsMain():
-      self.changeImageBG(col)
+      self.changeImageBgAsMain()
     elif self.image_viewer.isInterfaceImageBGPattern():
       self.changeImageBGCheckPattern()
     else:
-      col = self.getInterfaceImageBGColour()
-      self.changeImageBG(col)
+      colour = self.image_viewer.getInterfaceImageBGColour()
+      self.changeImageBGAsCustom(colour)
+  
+  ############################################
+  ## Change BG colours and memorize changes ##
+  ############################################
+  def modifyMainBG(self, colour):
+    self.image_viewer.setInterfaceBGColour(colour)
+  
+  def setImageBGCheckPattern(self):
+    self.image_viewer.setInterfaceImageBGTypePattern()
+  
+  def setImageBgAsMain(self):
+    self.image_viewer.setInterfaceImageBGTypeAsMain()
+  
+  def setImageBGAsCustom(self):
+    self.image_viewer.setInterfaceImageBGTypeColour()
+  
+  def modifyImageBG(self, colour):
+    self.image_viewer.setInterfaceImageBGColour(colour)
   
   #######################
   ## Change BG colours ##
   #######################
   def changeMainBG(self, colour):
     self.changeClassBGColour('MainView', colour)
+    
+  def changeImageBGCheckPattern(self):
+    self.image_widget.set_name('image-checked')
+  
+  def changeImageBgAsMain(self):
+    col = self.image_viewer.getInterfaceBGColour()
+    self.changeImageBG(col)
+  
+  def changeImageBGAsCustom(self, colour):
+    self.changeImageBG(colour)
   
   def changeImageBG(self, colour):
     self.changeClassBGColour('image', colour)
     self.image_widget.set_name('image')
-  
-  def changeImageBGCheckPattern(self):
-    self.image_widget.set_name('image-checked')
   
   def changeClassBGColour(self, class_name, colour):
     # colour should be Gdk.RGBA
