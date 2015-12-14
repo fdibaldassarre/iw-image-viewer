@@ -9,7 +9,7 @@ parser.add_argument( 'address', nargs='?', default=None, help = 'Image address' 
 
 args = parser.parse_args()
 
-address = args.address
+address = os.path.realpath(args.address)
 
 config_folder = os.path.join(os.environ['HOME'], ".config/iw-image-viewer/")
 

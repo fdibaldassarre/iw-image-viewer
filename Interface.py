@@ -97,7 +97,8 @@ class Interface():
     
     self.loadCss()
     self.loadAccels()
-    #self.setupHeaderBar()
+    self.setupHeaderBar()
+    self.setupSettingsWindow()
     self.applyColourSettings()
     
     self.main_window_fullscreen = False
@@ -135,6 +136,19 @@ class Interface():
     header_bar = self.builder.get_object('HeaderBar')
     self.main_window.set_titlebar(header_bar)
   
+  def setupSettingsWindow(self):
+    settings_close = self.builder.get_object('SettingsClose')
+    settings_close.connect('clicked', self.hideSettings)
+    # buttons
+    # - main
+    change_bg = self.builder.get_object('BGColourButton')
+    change_bg.connect('color-set', self.changeMainBG)
+    # - trasparency
+    check_bg = self.builder.get_object('ImageBGTypeCheck')
+    check_bg.connect('toggled', self.toggleTrasparencyCheck)
+    same_main = self.builder.get_object('ImageBGTypeSameMain')
+    same_main.connect('toggled', self.toggleTrasparencySameMain)
+  
   ###########################
   ## Setup settings window ##
   ###########################
@@ -143,6 +157,19 @@ class Interface():
     settings_win = self.builder.get_object('SettingsWindow')
     settings_win.show_all()
   
+  def hideSettings(self, widget):
+    settings_win = self.builder.get_object('SettingsWindow')
+    settings_win.hide()
+  
+  def toggleTrasparencyCheck(self, widget):
+    if widget.get_active():
+      self.changeImageBGCheckPattern()
+  
+  def toggleTrasparencySameMain(self, widget):
+    if widget.get_active():
+      ## TODO: how do I do this???
+      self.changeImageBGCheckPattern()
+  
   ################
   ## Load style ##
   ################
@@ -150,7 +177,7 @@ class Interface():
     provider = self._addCssProvider()
     css_file = os.path.join(MAIN_FOLDER, 'css/style.css')
     provider.load_from_path(css_file)
-  
+
   def _addCssProvider(self):
     display = Gdk.Display.get_default()
     screen = Gdk.Display.get_default_screen(display)
@@ -179,6 +206,9 @@ class Interface():
     self.changeClassBGColour('image', colour)
     self.image_widget.set_name('image')
   
+  def changeImageBGCheckPattern(self):
+    self.image_widget.set_name('image-checked')
+  
   def changeClassBGColour(self, class_name, colour):
     # colour should be Gdk.RGBA
     colour_rgb = colour.to_string() 
@@ -187,9 +217,6 @@ class Interface():
     # set class
     data = '#' + class_name + '{background-color: ' + colour_rgb + ';}'
     provider.load_from_data(bytes(data.encode()))
-  
-  def changeImageBGCheckPattern(self):
-    self.image_widget.set_name('image-checked')
   
   ###################
   ## Main controls ##
