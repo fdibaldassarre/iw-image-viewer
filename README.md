@@ -23,4 +23,3 @@ Todo:
 
   * Better folder monitoring
   
-  * Add a preferences window
