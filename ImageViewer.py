@@ -72,7 +72,8 @@ class IWImage():
   def __init__(self, path):
     self.path = path
     self.position = -1
-    _, self.extension = os.path.splitext(self.path)
+    _, extension = os.path.splitext(self.path)
+    self.extension = extension.lower()
     self.name = os.path.basename(self.path)
     self.folder = os.path.dirname(self.path)
     self.setError()
