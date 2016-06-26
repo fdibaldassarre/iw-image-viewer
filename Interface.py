@@ -470,6 +470,8 @@ class Interface():
       self.nextImage()
     elif key_val == Gdk.KEY_F11:
       self.toggleFullscreen()
+    elif key_val == Gdk.KEY_Escape:
+      self.modeFullscreen(False)
     return False
   
   ##########
