@@ -58,7 +58,7 @@ def imageIsNotNone(method):
 class SHandler():
 
   def __init__(self, interface):
-    self.interface = interface 
+    self.interface = interface
   
   ## Main
   def closeMain(self, *args):
@@ -306,7 +306,8 @@ class Interface():
   ###################
   def start(self, image):
     self.inotify_timeout = GObject.timeout_add(500, self.checkInotify)
-    GObject.timeout_add(50, self.openImage, image)
+    # Wait for the widget to be completely drawn
+    GObject.timeout_add(200, self.openImage, image)
     Gtk.main()
   
   def close(self, *args):
@@ -336,8 +337,8 @@ class Interface():
   ## Window size changes ##
   #########################
   def onMainWindowChange(self, widget, event):
-    if(event.get_event_type() == Gdk.EventType.WINDOW_STATE):
-      if(event.changed_mask == Gdk.WindowState.FULLSCREEN):
+    if event.get_event_type() == Gdk.EventType.WINDOW_STATE:
+      if event.changed_mask == Gdk.WindowState.FULLSCREEN:
         # wait for the window changes to have taken effect
         GObject.timeout_add(100, self.fitImageToWindow)
     return False
@@ -381,12 +382,15 @@ class Interface():
   ## Open image ##
   ################
   def openImage(self, image):
-    if image is None:
+    # Set image
+    self.image = image
+    # Check
+    if self.image is None:
       # show error widget
       self.main_window.set_title('Image viewer - No image')
       self.image_widget.show()
       return True
-    self.image = image
+    #self.image = image
     self.imageQuickSetup()
     self.current_factor = 1.0
     self.user_set_zoom = False
