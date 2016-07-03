@@ -5,6 +5,7 @@ import configparser
 from natsort import natsorted
 from Interface import Interface
 
+from gi.repository import GObject
 from gi.repository import Gdk
 from gi.repository import GdkPixbuf
 
@@ -44,7 +45,6 @@ ANIMATION_DELAY = 1 / ANIMATION_RATE
 INOTIFY_TIMEOUT = 10 # Keep this number low
 
 SIZE_DIFF = 112 # This size diff is due to the HeaderBar
-
 
 ## Inotify Handler
 class InotifyEventHandler(pyinotify.ProcessEvent):
@@ -104,9 +104,11 @@ class IWImage():
   
   def loadAnimation(self):
     try:
-      self.pixbuf = GdkPixbuf.PixbufAnimation.new_from_file(self.path)
-      self.size = (self.pixbuf.get_width(), self.pixbuf.get_height())
-      self.is_resizable = False
+      self.animation = GdkPixbuf.PixbufAnimation.new_from_file(self.path)
+      self.animation_iter = self.animation.get_iter()
+      self.size = (self.animation.get_width(), self.animation.get_height())
+      self.animation_size = self.size
+      self.is_resizable = True
       self.error_loading = False
     except Exception:
       self.setError()
@@ -124,9 +126,16 @@ class IWImage():
     if self.isStatic():
       return self.pixbuf.scale_simple(width, height, GdkPixbuf.InterpType.BILINEAR)
     elif self.isAnimation():
+      self.animation_size = (width, height)
       return None
     else:
       return None
+  
+  def getAnimationPixbuf(self):
+    self.animation_iter.advance()
+    pixbuf = self.animation_iter.get_pixbuf()
+    width, height = self.animation_size
+    return self.animation_iter, pixbuf.scale_simple(width, height, GdkPixbuf.InterpType.BILINEAR)
   
   '''
   def scaleAnimation(self, width, height):

@@ -185,6 +185,7 @@ class Interface():
     # Timeouts
     self.open_image_timeout = None
     self.inotify_timeout = None
+    self.animation_update_timeout = None
     
     # Connect signals
     self.builder.connect_signals(SHandler(self))
@@ -382,6 +383,7 @@ class Interface():
   ## Open image ##
   ################
   def openImage(self, image):
+    self.stopAnimationUpdate()
     # Set image
     self.image = image
     # Check
@@ -390,7 +392,6 @@ class Interface():
       self.main_window.set_title('Image viewer - No image')
       self.image_widget.show()
       return True
-    #self.image = image
     self.imageQuickSetup()
     self.current_factor = 1.0
     self.user_set_zoom = False
@@ -433,7 +434,7 @@ class Interface():
     self.image_widget.set_from_pixbuf(self.image.getPixbuf())
   
   def openAnimation(self):
-    self.image_widget.set_from_animation(self.image.getPixbuf())
+    self.updateAnimation()
   
   @imageIsNotNone
   def nextImage(self):
@@ -666,11 +667,27 @@ class Interface():
     if self.image.isStatic():
       self.image_widget.set_from_pixbuf(zoom_pix)
     elif self.image.isAnimation():
-      self.image_widget.set_from_animation(zoom_pix)
+      self.stopAnimationUpdate()
+      self.updateAnimation()
     else:
       self.setErrorImage()
     # Image updated
     return True
+  
+  def updateAnimation(self):
+    # Get pixbuf
+    aiter, pixbuf = self.image.getAnimationPixbuf()
+    # Set image
+    self.image_widget.set_from_pixbuf(pixbuf)
+    # Wait for the next update
+    delay = aiter.get_delay_time()
+    self.animation_update_timeout = GObject.timeout_add(delay, self.updateAnimation)
+    return False
+  
+  def stopAnimationUpdate(self):
+    if self.animation_update_timeout is not None:
+      GObject.source_remove(self.animation_update_timeout)
+      self.animation_update_timeout = None
   
   ##############
   ## Info bar ##
