@@ -312,6 +312,7 @@ class Interface():
     Gtk.main()
   
   def close(self, *args):
+    self.stopAnimationUpdate()
     GObject.source_remove(self.fade_timeout)
     GObject.source_remove(self.inotify_timeout)
     self.image_viewer.close()
@@ -443,6 +444,24 @@ class Interface():
   @imageIsNotNone
   def prevImage(self):
     self.image_viewer.openPrevImage()
+  
+  ####################
+  ## Load Animation ##
+  ####################
+  def updateAnimation(self):
+    # Get pixbuf
+    aiter, pixbuf = self.image.getAnimationPixbuf()
+    # Set image
+    self.image_widget.set_from_pixbuf(pixbuf)
+    # Wait for the next update
+    delay = aiter.get_delay_time()
+    self.animation_update_timeout = GObject.timeout_add(delay, self.updateAnimation)
+    return False
+  
+  def stopAnimationUpdate(self):
+    if self.animation_update_timeout is not None:
+      GObject.source_remove(self.animation_update_timeout)
+      self.animation_update_timeout = None
   
   ########################
   ## Keyboard shortcuts ##
@@ -673,21 +692,6 @@ class Interface():
       self.setErrorImage()
     # Image updated
     return True
-  
-  def updateAnimation(self):
-    # Get pixbuf
-    aiter, pixbuf = self.image.getAnimationPixbuf()
-    # Set image
-    self.image_widget.set_from_pixbuf(pixbuf)
-    # Wait for the next update
-    delay = aiter.get_delay_time()
-    self.animation_update_timeout = GObject.timeout_add(delay, self.updateAnimation)
-    return False
-  
-  def stopAnimationUpdate(self):
-    if self.animation_update_timeout is not None:
-      GObject.source_remove(self.animation_update_timeout)
-      self.animation_update_timeout = None
   
   ##############
   ## Info bar ##

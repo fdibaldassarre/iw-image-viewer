@@ -76,6 +76,7 @@ class IWImage():
     self.extension = extension.lower()
     self.name = os.path.basename(self.path)
     self.folder = os.path.dirname(self.path)
+    self.is_static = True
     self.setError()
     self.load()
   
@@ -99,25 +100,30 @@ class IWImage():
       self.size = (self.pixbuf.get_width(), self.pixbuf.get_height())
       self.is_resizable = True
       self.error_loading = False
+      self.is_static = True
     except Exception:
       self.setError()
   
   def loadAnimation(self):
     try:
       self.animation = GdkPixbuf.PixbufAnimation.new_from_file(self.path)
-      self.animation_iter = self.animation.get_iter()
-      self.size = (self.animation.get_width(), self.animation.get_height())
-      self.animation_size = self.size
-      self.is_resizable = True
-      self.error_loading = False
+      if self.animation.is_static_image():
+        self.loadStaticImage()
+      else:
+        self.animation_iter = self.animation.get_iter()
+        self.size = (self.animation.get_width(), self.animation.get_height())
+        self.animation_size = self.size
+        self.is_resizable = True
+        self.error_loading = False
+        self.is_static = False
     except Exception:
       self.setError()
   
   def isAnimation(self):
-    return not self.error_loading and self.extension in SUPPORTED_ANIMATION
+    return not self.error_loading and not self.is_static
   
   def isStatic(self):
-    return not self.error_loading and self.extension in SUPPORTED_STATIC
+    return not self.error_loading and self.is_static
   
   def isError(self):
     return self.error_loading
@@ -136,37 +142,6 @@ class IWImage():
     pixbuf = self.animation_iter.get_pixbuf()
     width, height = self.animation_size
     return self.animation_iter, pixbuf.scale_simple(width, height, GdkPixbuf.InterpType.BILINEAR)
-  
-  '''
-  def scaleAnimation(self, width, height):
-    # Get all pixbuf and resize
-    delay = GLib.TimeVal()
-    # Stop loop
-    print(self.pixbuf.list_properties())
-    #self.pixbuf.set_loop(False)
-    pixiter = self.pixbuf.get_iter(delay)
-    all_pbuf = []
-    keep = True
-    while keep:
-      frame_pixbuf = pixiter.get_pixbuf()
-      pbuf = self.scaleAnimationFrame(frame_pixbuf, width, height)
-      all_pbuf.append(pbuf)
-      #delay_ms = pixiter.get_delay() * 1000
-      delay_ms = ANIMATION_DELAY * 1000000
-      delay.add(delay_ms)
-      r = pixiter.advance(delay)
-      print(r) # DEBUG
-    #self.pixbuf.set_loop(True)
-    # Compose new animation
-    new_animation = GdkPixbuf.PixbufSimpleAnim.new(width, height, ANIMATION_RATE)
-    for pbuf in all_pbuf:
-      new_animation.add_frame(pbuf)
-    new_animation.set_loop(True)
-    return new_animation
-  
-  def scaleAnimationFrame(self, pixbuf, width, height):
-    return pixbuf.scale_simple(width, height, GdkPixbuf.InterpType.BILINEAR)
-  '''
   
   def isResizable(self):
     return self.is_resizable
