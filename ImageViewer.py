@@ -2,12 +2,24 @@
 
 import os
 import configparser
-from natsort import natsorted
+
+# Import natsort if available
+try:
+  from natsort import natsorted
+except ImportError:
+  def natsorted(data):
+    it = list(data)
+    it.sort()
+    return it
+
 from Interface import Interface
 
 from gi.repository import GObject
+from gi.repository import GLib
 from gi.repository import Gdk
 from gi.repository import GdkPixbuf
+
+from PIL import Image
 
 import pyinotify
 
@@ -66,6 +78,179 @@ class InotifyEventHandler(pyinotify.ProcessEvent):
     # file moved in the folder
     self.process_IN_CREATE(event)
 
+## Animation cache
+
+## TODO: Find a way to associate pixbuf -> resized
+##       Note: The pixbufs are recycled in the animation
+##             hence subsequent calls to iter_advance()
+##             overwrite the memory of the old pixbufs
+
+CACHE_MAX_SIZE = 50
+
+class AnimationCache():
+  
+  def __init__(self):
+    self.cache = {}
+  
+  def getPixbuf(self, pixbuf, width, height):
+    if (pixbuf, width, height) in self.cache:
+      return self.cache[pixbuf, width, height]
+    else:
+      return self.addPixbuf(pixbuf, width, height)
+  
+  def addPixbuf(self, pixbuf, width, height):
+    res = pixbuf.scale_simple(width, height, GdkPixbuf.InterpType.BILINEAR)
+    self.addToCache(res, pixbuf, width, height)
+    return res
+  
+  def addToCache(self, res, pixbuf, width, height):
+    if len(self.cache) < CACHE_MAX_SIZE:
+      self.cache[pixbuf, width, height] = res
+    else:
+      if self.cleanCache(width, height):
+        self.cache[pixbuf, width, height] = res
+  
+  def cleanCache(self, width, height):
+    # Delete a pixbuf with different size
+    for el in self.cache:
+      _, w, h = el
+      if w != width or h != height:
+        del self.cache[el]
+        return True
+    return False
+
+
+class GIFFrame():
+  
+  def __init__(self, delay, pixbuf):
+    self.delay = delay
+    self.pixbuf = pixbuf
+  
+  def getDelay(self):
+    return self.delay
+  
+  def getPixbuf(self):
+    return self.pixbuf
+
+
+class GIFAnimation():
+  
+  def __init__(self, path):
+    self.path = path
+    self.img = Image.open(self.path)
+    self.cache = AnimationCache()
+    self.current_frame = -1
+    self.start_time = -1
+  
+  def load(self):
+    self.frames = []
+    prev = None
+    counter = 0
+    try:
+      while True:
+        current_image, duration = self.composeImage(self.img, prev)
+        current_image.save('/home/francesco/tmp/gifs/' + str(counter) + '.png')
+        counter += 1
+        prev = current_image
+        if duration > 0:
+          # Create pixbuf
+          data = GLib.Bytes(current_image.tobytes())
+          pixbuf = GdkPixbuf.Pixbuf.new_from_bytes(data, GdkPixbuf.Colorspace.RGB, True, 8, self.img.size[0], self.img.size[1], 4*self.img.size[0])
+          # Add frame
+          current_frame = GIFFrame(duration, pixbuf)
+          self.frames.append(current_frame)
+        self.img.seek(self.img.tell() + 1)
+    except EOFError:
+      pass
+  
+  def composeImage(self, img, prev):
+    # Extract data
+    duration = img.info['duration']
+    if 'background' in img.info:
+      background = self.img.info['background']
+    else:
+      background = None
+    if 'transparency' in img.info:
+      transparency = img.info['transparency']
+    else:
+      transparency = None
+    # Convert
+    img = img.convert('RGBA')
+    # Add transparency
+    #if transparency is not None:
+    #  img = self.addTransparency(img, transparency)
+    # Add background
+    if background is not None:
+      img = self.addTransparency(img, background)
+    # Stack with previous image
+    if prev is not None:
+      img = self.addBackground(img, prev)
+    return img, duration
+  
+  def addBackground(self, img, background):
+    background.paste(img, (0,0))
+    return background
+  
+  def addTransparency(self, frame, trasparency):
+    mask = self.findMask(frame, trasparency)
+    img = frame.convert('RGBA')
+    img.putalpha(mask)
+    return img
+  
+  def findMask(self, frame, trasparency):
+    img = frame.point(lambda x : 0 if x == trasparency else 255).convert('L')
+    return img
+  
+  def isAnimated(self):
+    return self.img.is_animated
+  
+  def getWidth(self):
+    return self.img.size[0]
+  
+  def getHeight(self):
+    return self.img.size[1]
+  
+  def getDelay(self):
+    return self.frames[self.current_frame].getDelay()
+  
+  def getPixbuf(self, width, height):
+    pixbuf = self.frames[self.current_frame].getPixbuf()
+    return self.cache.getPixbuf(pixbuf, width, height)
+  
+  def advance(self, time=None):
+    if time is None:
+      time = GLib.get_current_time()
+    if self.start_time == -1:
+      self.start_time = time
+      self.current_frame = 0
+    else:
+      elapsed = (time - self.start_time) * 1000
+      diff = 0
+      frame_id = -1
+      while diff < elapsed:
+        frame_id += 1
+        frame_id = frame_id % len(self.frames)
+        frame = self.frames[frame_id]
+        diff += frame.getDelay()
+      self.current_frame = frame_id
+
+  ## Compatibility methods
+  def is_static_image(self):
+    return not self.isAnimated()
+  
+  def get_width(self):
+    return self.getWidth()
+  
+  def get_height(self):
+    return self.getHeight()
+  
+  def get_iter(self):
+    return self
+  
+  def get_delay_time(self):
+    return self.getDelay()
+
+
 ## IWImage
 class IWImage():
 
@@ -105,19 +290,21 @@ class IWImage():
       self.setError()
   
   def loadAnimation(self):
-    try:
-      self.animation = GdkPixbuf.PixbufAnimation.new_from_file(self.path)
+    #try:
+    if True:
+      self.animation = GIFAnimation(self.path) #GdkPixbuf.PixbufAnimation.new_from_file(self.path)
       if self.animation.is_static_image():
         self.loadStaticImage()
       else:
+        self.animation.load() # GIFAnimation
         self.animation_iter = self.animation.get_iter()
         self.size = (self.animation.get_width(), self.animation.get_height())
         self.animation_size = self.size
         self.is_resizable = True
         self.error_loading = False
         self.is_static = False
-    except Exception:
-      self.setError()
+    #except Exception:
+    #  self.setError()
   
   def isAnimation(self):
     return not self.error_loading and not self.is_static
@@ -139,9 +326,12 @@ class IWImage():
   
   def getAnimationPixbuf(self):
     self.animation_iter.advance()
-    pixbuf = self.animation_iter.get_pixbuf()
     width, height = self.animation_size
-    return self.animation_iter, pixbuf.scale_simple(width, height, GdkPixbuf.InterpType.BILINEAR)
+    # Get Pixbuf
+    #pixbuf = self.animation_iter.get_pixbuf()
+    #res_pixbuf = pixbuf.scale_simple(width, height, GdkPixbuf.InterpType.BILINEAR)
+    res_pixbuf = self.animation.getPixbuf(width, height) # GIFAnimation
+    return self.animation_iter, res_pixbuf
   
   def isResizable(self):
     return self.is_resizable
