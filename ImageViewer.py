@@ -164,7 +164,6 @@ class GIFAnimation():
     try:
       while True:
         current_image, duration = self.composeImage(self.img, prev)
-        current_image.save('/home/francesco/tmp/gifs/' + str(counter) + '.png')
         counter += 1
         prev = current_image
         if duration > 0:
@@ -306,11 +305,11 @@ class IWImage():
   
   def loadAnimation(self):
     try:
-      self.animation = GIFAnimation(self.path) #GdkPixbuf.PixbufAnimation.new_from_file(self.path)
+      self.animation = GdkPixbuf.PixbufAnimation.new_from_file(self.path) #GIFAnimation(self.path)
       if self.animation.is_static_image():
         self.loadStaticImage()
       else:
-        self.animation.load() # GIFAnimation
+        #self.animation.load() # GIFAnimation
         self.animation_iter = self.animation.get_iter()
         self.size = (self.animation.get_width(), self.animation.get_height())
         self.animation_size = self.size
@@ -342,9 +341,9 @@ class IWImage():
     self.animation_iter.advance()
     width, height = self.animation_size
     # Get Pixbuf
-    #pixbuf = self.animation_iter.get_pixbuf()
-    #res_pixbuf = pixbuf.scale_simple(width, height, GdkPixbuf.InterpType.BILINEAR)
-    res_pixbuf = self.animation.getPixbuf(width, height) # GIFAnimation
+    pixbuf = self.animation_iter.get_pixbuf()
+    res_pixbuf = pixbuf.scale_simple(width, height, GdkPixbuf.InterpType.BILINEAR)
+    #res_pixbuf = self.animation.getPixbuf(width, height) # GIFAnimation
     return self.animation_iter, res_pixbuf
   
   def isResizable(self):
