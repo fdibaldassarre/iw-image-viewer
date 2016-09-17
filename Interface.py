@@ -135,8 +135,7 @@ class Interface():
     self.builder = Gtk.Builder.new()
     ui_file = os.path.join(MAIN_FOLDER, 'ui/Main.glade')
     self.builder.add_from_file(ui_file)
-    header_file = os.path.join(MAIN_FOLDER, 'ui/HeaderBar.glade')
-    self.builder.add_from_file(header_file)
+    self.loadHeaderBar()
     
     self.main_window = self.builder.get_object('MainWindow')
     self.image_widget = self.builder.get_object('Image')
@@ -193,11 +192,33 @@ class Interface():
   ######################
   ## Setup header bar ##
   ######################
+  def loadHeaderBar(self):
+    if Gtk.get_major_version() == 3 and Gtk.get_minor_version() >= 10:
+      header_file = os.path.join(MAIN_FOLDER, 'ui/HeaderBar.glade')
+      self.builder.add_from_file(header_file)
+      self.legacy_header = False
+    else:
+      # Show legacy header bar
+      old_header = self.builder.get_object('HeaderBarLegacy')
+      old_header.show()
+      # Setup settings button
+      button = self.builder.get_object('SettingsButtonLegacy')
+      pixbuf = Gtk.IconTheme.get_default().load_icon(Gtk.STOCK_PREFERENCES, 16, 0)
+      icon = Gtk.Image()
+      icon.set_from_pixbuf(pixbuf)
+      button.add(icon)
+      button.show_all()
+      self.legacy_header = True
+  
   def setupHeaderBar(self):
-    btn = self.builder.get_object('SettingsButton')
-    btn.connect('clicked', self.openSettings)
-    header_bar = self.builder.get_object('HeaderBar')
-    self.main_window.set_titlebar(header_bar)
+    if self.legacy_header:
+      btn = self.builder.get_object('SettingsButtonLegacy')
+      btn.connect('clicked', self.openSettings)
+    else:
+      btn = self.builder.get_object('SettingsButton')
+      btn.connect('clicked', self.openSettings)
+      header_bar = self.builder.get_object('HeaderBar')
+      self.main_window.set_titlebar(header_bar)
   
   ###########################
   ## Setup settings window ##
@@ -356,10 +377,16 @@ class Interface():
     if fullscreen:
       self.main_window.fullscreen()
       info_grid.hide()
+      if self.legacy_header:
+        header = self.builder.get_object('HeaderBarLegacy')
+        header.hide()
       self.main_window_fullscreen = True
     else:
       self.main_window.unfullscreen()
       info_grid.show()
+      if self.legacy_header:
+        header = self.builder.get_object('HeaderBarLegacy')
+        header.show()
       self.main_window_fullscreen = False
   
   def updateWindowSize(self, widget, event):
