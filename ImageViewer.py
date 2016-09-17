@@ -3,6 +3,8 @@
 import os
 import configparser
 
+from PIL import Image
+
 # Import natsort if available
 try:
   from natsort import natsorted
@@ -12,16 +14,19 @@ except ImportError:
     it.sort()
     return it
 
+# Import pyinotify if possible
+try:
+  import pyinotify
+  INOTIFY = True
+except ImportError:
+  INOTIFY = False
+
 from Interface import Interface
 
 from gi.repository import GObject
 from gi.repository import GLib
 from gi.repository import Gdk
 from gi.repository import GdkPixbuf
-
-from PIL import Image
-
-import pyinotify
 
 OPEN_NEXT = 0
 OPEN_PREV = 1
@@ -58,25 +63,35 @@ INOTIFY_TIMEOUT = 10 # Keep this number low
 
 SIZE_DIFF = 112 # This size diff is due to the HeaderBar
 
-## Inotify Handler
-class InotifyEventHandler(pyinotify.ProcessEvent):
-  def __init__(self, image_viewer):
-    pyinotify.ProcessEvent.__init__(self)
-    self.image_viewer = image_viewer
-  
-  def process_IN_CREATE(self, event):
-    self.image_viewer.addToFilelist(event.pathname)
-  
-  def process_IN_DELETE(self, event):
-    self.image_viewer.removeFromFilelist(event.pathname)
+## Inotify check
+def ifInotify(method):
+  def new(self, *args, **kwargs):
+    if not self.has_inotify:
+      return None
+    else:
+      return method(self, *args, **kwargs)
+  return new
+
+if INOTIFY:
+  ## Inotify Handler
+  class InotifyEventHandler(pyinotify.ProcessEvent):
+    def __init__(self, image_viewer):
+      pyinotify.ProcessEvent.__init__(self)
+      self.image_viewer = image_viewer
     
-  def process_IN_MOVED_FROM(self, event):
-    # file moved from the folder
-    self.process_IN_DELETE(event)
-  
-  def process_IN_MOVED_IN(self, event):
-    # file moved in the folder
-    self.process_IN_CREATE(event)
+    def process_IN_CREATE(self, event):
+      self.image_viewer.addToFilelist(event.pathname)
+    
+    def process_IN_DELETE(self, event):
+      self.image_viewer.removeFromFilelist(event.pathname)
+      
+    def process_IN_MOVED_FROM(self, event):
+      # file moved from the folder
+      self.process_IN_DELETE(event)
+    
+    def process_IN_MOVED_IN(self, event):
+      # file moved in the folder
+      self.process_IN_CREATE(event)
 
 ## Animation cache
 
@@ -290,8 +305,7 @@ class IWImage():
       self.setError()
   
   def loadAnimation(self):
-    #try:
-    if True:
+    try:
       self.animation = GIFAnimation(self.path) #GdkPixbuf.PixbufAnimation.new_from_file(self.path)
       if self.animation.is_static_image():
         self.loadStaticImage()
@@ -303,8 +317,8 @@ class IWImage():
         self.is_resizable = True
         self.error_loading = False
         self.is_static = False
-    #except Exception:
-    #  self.setError()
+    except Exception:
+      self.setError()
   
   def isAnimation(self):
     return not self.error_loading and not self.is_static
@@ -372,11 +386,15 @@ class ImageViewer():
     self.current_image = None
     self.files_in_folder = []
     # Inotify
-    self.pyinotify_wm = pyinotify.WatchManager()
-    self.pyinotify_mask = pyinotify.IN_DELETE | pyinotify.IN_CREATE | pyinotify.IN_MOVED_FROM | pyinotify.IN_MOVED_TO
-    handler = InotifyEventHandler(self)
-    self.pyinotify_notifier = pyinotify.Notifier(self.pyinotify_wm, handler, timeout=INOTIFY_TIMEOUT)
-    self.pyinotify_wdd = {}
+    if INOTIFY:
+      self.has_inotify = True
+      self.pyinotify_wm = pyinotify.WatchManager()
+      self.pyinotify_mask = pyinotify.IN_DELETE | pyinotify.IN_CREATE | pyinotify.IN_MOVED_FROM | pyinotify.IN_MOVED_TO
+      handler = InotifyEventHandler(self)
+      self.pyinotify_notifier = pyinotify.Notifier(self.pyinotify_wm, handler, timeout=INOTIFY_TIMEOUT)
+      self.pyinotify_wdd = {}
+    else:
+      self.has_inotify = False
   
   def loadConfig(self):
     self.config = configparser.SafeConfigParser(DEFAULT_CONFIG)
@@ -472,9 +490,11 @@ class ImageViewer():
   def stop(self):
     self.interface.close()
   
+  @ifInotify
   def inotifyAdd(self, path):
     self.pyinotify_wdd = self.pyinotify_wm.add_watch(path, self.pyinotify_mask, rec=False)
     
+  @ifInotify
   def inotifyRemove(self, path):
     if self.pyinotify_wdd[path] > 0:
       self.pyinotify_wm.rm_watch(self.pyinotify_wdd[path])

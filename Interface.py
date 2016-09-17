@@ -327,7 +327,10 @@ class Interface():
   ## Main controls ##
   ###################
   def start(self, image):
-    self.inotify_timeout = GObject.timeout_add(500, self.checkInotify)
+    if self.image_viewer.has_inotify:
+      self.inotify_timeout = GObject.timeout_add(500, self.checkInotify)
+    else:
+      self.inotify_timeout = None
     # Wait for the widget to be completely drawn
     GObject.timeout_add(200, self.openImage, image)
     Gtk.main()
@@ -335,7 +338,8 @@ class Interface():
   def close(self, *args):
     self.stopAnimationUpdate()
     GObject.source_remove(self.fade_timeout)
-    GObject.source_remove(self.inotify_timeout)
+    if self.inotify_timeout is not None:
+      GObject.source_remove(self.inotify_timeout)
     self.image_viewer.close()
     Gtk.main_quit()
   
