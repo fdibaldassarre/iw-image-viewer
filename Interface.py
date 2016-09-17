@@ -76,6 +76,7 @@ class SHandler():
   ## Image
   def imageScroll(self, *args):
     self.interface.scroll(*args)
+    return True
   
   def imageStartDrag(self, *args):
     self.interface.startDrag(*args)
