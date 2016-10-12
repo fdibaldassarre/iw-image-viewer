@@ -147,7 +147,13 @@ class GIFFrame():
   def getPixbuf(self):
     return self.pixbuf
 
-
+# Pil/Pillow has atm (2016/10/12) several bug regarding GIF animations
+# so using Pil is not feasible
+# e.g. Try using
+# img = Image.open('/path/to/gif.png')
+# img.save('/tmp/savepath.gif', format='GIF', save_all=True)
+# and confront the saved image with the original.
+USE_PIL_GIF = False
 class GIFAnimation():
   
   def __init__(self, path):
@@ -156,15 +162,20 @@ class GIFAnimation():
     self.cache = AnimationCache()
     self.current_frame = -1
     self.start_time = -1
+    # Load
+    self._load()
   
-  def load(self):
+  def _load(self):
     self.frames = []
     prev = None
-    counter = 0
+    #counter = 0
+    # PIL BUG: palette is not correct for frames past the first
+    #self._palette = self.img.getpalette()
     try:
       while True:
         current_image, duration = self.composeImage(self.img, prev)
-        counter += 1
+        #current_image.save('/home/francesco/tmp/imgs/dbg/' + str(counter)+ '.png')
+        #counter += 1
         prev = current_image
         if duration > 0:
           # Create pixbuf
@@ -173,32 +184,35 @@ class GIFAnimation():
           # Add frame
           current_frame = GIFFrame(duration, pixbuf)
           self.frames.append(current_frame)
-        self.img.seek(self.img.tell() + 1)
+        n_frame = self.img.tell() + 1
+        self.img.seek(n_frame)
+        # PIL BUG: Successive frames are stacked if there is transparency
+        # Note: The try..except is a workaround to get the correct frame
+        #       if frame has transparency
+        #try:
+        #  self.img.seek(9999999)
+        #except Exception:
+        #  self.img.seek(n_frame)
     except EOFError:
       pass
   
-  def composeImage(self, img, prev):
+  def composeImage(self, orig_img, prev):
+    # Copy and convert
+    img = orig_img.copy()
+    img.putpalette(self._palette)
+    img = img.convert('RGBA')
     # Extract data
     duration = img.info['duration']
     if 'background' in img.info:
       background = self.img.info['background']
     else:
       background = None
-    if 'transparency' in img.info:
-      transparency = img.info['transparency']
-    else:
-      transparency = None
-    # Convert
-    img = img.convert('RGBA')
-    # Add transparency
-    #if transparency is not None:
-    #  img = self.addTransparency(img, transparency)
     # Add background
-    if background is not None:
-      img = self.addTransparency(img, background)
+    #if background is not None:
+    #  img = self.addBackground(img, background)
     # Stack with previous image
-    if prev is not None:
-      img = self.addBackground(img, prev)
+    #if prev is not None:
+    #  img = self.addBackground(img, prev)
     return img, duration
   
   def addBackground(self, img, background):
@@ -305,11 +319,13 @@ class IWImage():
   
   def loadAnimation(self):
     try:
-      self.animation = GdkPixbuf.PixbufAnimation.new_from_file(self.path) #GIFAnimation(self.path)
+      if USE_PIL_GIF:
+        self.animation = GIFAnimation(self.path)
+      else:
+        self.animation = GdkPixbuf.PixbufAnimation.new_from_file(self.path)
       if self.animation.is_static_image():
         self.loadStaticImage()
       else:
-        #self.animation.load() # GIFAnimation
         self.animation_iter = self.animation.get_iter()
         self.size = (self.animation.get_width(), self.animation.get_height())
         self.animation_size = self.size
@@ -341,9 +357,11 @@ class IWImage():
     self.animation_iter.advance()
     width, height = self.animation_size
     # Get Pixbuf
-    pixbuf = self.animation_iter.get_pixbuf()
-    res_pixbuf = pixbuf.scale_simple(width, height, GdkPixbuf.InterpType.BILINEAR)
-    #res_pixbuf = self.animation.getPixbuf(width, height) # GIFAnimation
+    if USE_PIL_GIF:
+      res_pixbuf = self.animation.getPixbuf(width, height)
+    else:
+      pixbuf = self.animation_iter.get_pixbuf()
+      res_pixbuf = pixbuf.scale_simple(width, height, GdkPixbuf.InterpType.BILINEAR)
     return self.animation_iter, res_pixbuf
   
   def isResizable(self):
