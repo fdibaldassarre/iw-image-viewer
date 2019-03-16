@@ -295,13 +295,13 @@ class IWImage():
     self.is_static = True
     self.setError()
     self.load()
-  
+
   def setError(self):
     self.pixbuf = None
     self.size = None
     self.is_resizable = False
     self.error_loading = True
-  
+
   def load(self):
     if self.extension in SUPPORTED_STATIC:
       self.loadStaticImage()
@@ -309,17 +309,27 @@ class IWImage():
       self.loadAnimation()
     else:
       self.setError()
-  
+
   def loadStaticImage(self):
     try:
-      self.pixbuf = GdkPixbuf.Pixbuf.new_from_file(self.path)
+      self.pixbuf = self._loadPixbuf()
       self.size = (self.pixbuf.get_width(), self.pixbuf.get_height())
       self.is_resizable = True
       self.error_loading = False
       self.is_static = True
     except Exception:
       self.setError()
-  
+
+  def _loadPixbuf(self):
+        if self.extension == '.webp':
+            pixbuf = convertPilImageToGdkPixbuf(Image.open(self.path))
+        else:
+            try:
+                pixbuf = GdkPixbuf.Pixbuf.new_from_file(self.path)
+            except Exception:
+                pixbuf = convertPilImageToGdkPixbuf(Image.open(self.path))
+        return pixbuf
+
   def loadAnimation(self):
     try:
       if USE_PIL_GIF:
@@ -337,16 +347,16 @@ class IWImage():
         self.is_static = False
     except Exception:
       self.setError()
-  
+
   def isAnimation(self):
     return not self.error_loading and not self.is_static
-  
+
   def isStatic(self):
     return not self.error_loading and self.is_static
-  
+
   def isError(self):
     return self.error_loading
-  
+
   def scale(self, width, height):
     if self.isStatic():
       return self.pixbuf.scale_simple(width, height, GdkPixbuf.InterpType.BILINEAR)
@@ -355,7 +365,7 @@ class IWImage():
       return None
     else:
       return None
-  
+
   def getAnimationPixbuf(self):
     self.animation_iter.advance()
     width, height = self.animation_size
@@ -366,34 +376,34 @@ class IWImage():
       pixbuf = self.animation_iter.get_pixbuf()
       res_pixbuf = pixbuf.scale_simple(width, height, GdkPixbuf.InterpType.BILINEAR)
     return self.animation_iter, res_pixbuf
-  
+
   def isResizable(self):
     return self.is_resizable
-    
+
   def getSize(self):
     return self.size
-  
+
   def getFilepath(self):
     return self.path
-  
+
   def getName(self):
     return self.name
-  
+
   def getPixbuf(self):
     return self.pixbuf
-  
+
   def getFolder(self):
     return self.folder
-  
+
   def getFolderName(self):
     return os.path.basename(self.folder)
-  
+
   def setPosition(self, position):
     self.position = position
-  
+
   def getPosition(self):
     return self.position
-    
+
 # Image Viewer
 class ImageViewer():
 
