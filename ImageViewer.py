@@ -102,7 +102,7 @@ if INOTIFY:
 ##                         overwrite the memory of the old pixbufs
 
 CACHE_MAX_SIZE = 50
-
+USE_PIL_GIF = False
 class AnimationCache():
 
     def __init__(self):
@@ -138,112 +138,6 @@ class AnimationCache():
 
 class GIFFrame():
 
-<<<<<<< HEAD
-# Pil/Pillow has atm (2016/10/12) several bug regarding GIF animations
-# so using Pil is not feasible
-# e.g. Try using
-# img = Image.open('/path/to/gif.png')
-# img.save('/tmp/savepath.gif', format='GIF', save_all=True)
-# and confront the saved image with the original.
-USE_PIL_GIF = False
-class GIFAnimation():
-  
-  def __init__(self, path):
-    self.path = path
-    self.img = Image.open(self.path)
-    self.cache = AnimationCache()
-    self.current_frame = -1
-    self.start_time = -1
-    # Load
-    self._load()
-  
-  def _load(self):
-    self.frames = []
-    prev = None
-    #counter = 0
-    # PIL BUG: palette is not correct for frames past the first
-    #self._palette = self.img.getpalette()
-    try:
-      while True:
-        current_image, duration = self.composeImage(self.img, prev)
-        #current_image.save('/home/francesco/tmp/imgs/dbg/' + str(counter)+ '.png')
-        #counter += 1
-        prev = current_image
-        if duration > 0:
-          # Create pixbuf
-          data = GLib.Bytes(current_image.tobytes())
-          pixbuf = GdkPixbuf.Pixbuf.new_from_bytes(data, GdkPixbuf.Colorspace.RGB, True, 8, self.img.size[0], self.img.size[1], 4*self.img.size[0])
-          # Add frame
-          current_frame = GIFFrame(duration, pixbuf)
-          self.frames.append(current_frame)
-        n_frame = self.img.tell() + 1
-        self.img.seek(n_frame)
-        # PIL BUG: Successive frames are stacked if there is transparency
-        # Note: The try..except is a workaround to get the correct frame
-        #       if frame has transparency
-        #try:
-        #  self.img.seek(9999999)
-        #except Exception:
-        #  self.img.seek(n_frame)
-    except EOFError:
-      pass
-  
-  def composeImage(self, orig_img, prev):
-    # Copy and convert
-    img = orig_img.copy()
-    img.putpalette(self._palette)
-    img = img.convert('RGBA')
-    # Extract data
-    duration = img.info['duration']
-    if 'background' in img.info:
-      background = self.img.info['background']
-    else:
-      background = None
-    # Add background
-    #if background is not None:
-    #  img = self.addBackground(img, background)
-    # Stack with previous image
-    #if prev is not None:
-    #  img = self.addBackground(img, prev)
-    return img, duration
-  
-  def addBackground(self, img, background):
-    background.paste(img, (0,0))
-    return background
-  
-  def addTransparency(self, frame, trasparency):
-    mask = self.findMask(frame, trasparency)
-    img = frame.convert('RGBA')
-    img.putalpha(mask)
-    return img
-  
-  def findMask(self, frame, trasparency):
-    img = frame.point(lambda x : 0 if x == trasparency else 255).convert('L')
-    return img
-  
-  def isAnimated(self):
-    return self.img.is_animated
-  
-  def getWidth(self):
-    return self.img.size[0]
-  
-  def getHeight(self):
-    return self.img.size[1]
-  
-  def getDelay(self):
-    return self.frames[self.current_frame].getDelay()
-  
-  def getPixbuf(self, width, height):
-    pixbuf = self.frames[self.current_frame].getPixbuf()
-    return self.cache.getPixbuf(pixbuf, width, height)
-  
-  def advance(self, time=None):
-    if time is None:
-      time = GLib.get_current_time()
-    if self.start_time == -1:
-      self.start_time = time
-      self.current_frame = 0
-=======
     def __init__(self, delay, pixbuf):
         self.delay = delay
         self.pixbuf = pixbuf
@@ -268,7 +162,6 @@ def convertPilImageToGdkPixbuf(image, width=None, height=None):
         has_alpha = False
     if has_alpha:
         row_stride = 4 * width
->>>>>>> e4cbdccef99d63018bcbe94a7f51f9f04a24a346
     else:
         row_stride = 3 * width
     return GdkPixbuf.Pixbuf.new_from_bytes(data, GdkPixbuf.Colorspace.RGB, has_alpha, 8, width, height, row_stride)
