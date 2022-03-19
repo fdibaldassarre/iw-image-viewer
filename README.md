@@ -3,7 +3,7 @@ Simple image viewer in Gtk.
 
 ## Installation
 
-Install the .deb from the release page.
+Install the .deb from the [latest release page](https://github.com/fdibaldassarre/iw-image-viewer/releases/latest).
 
 
 ## Shortcuts
