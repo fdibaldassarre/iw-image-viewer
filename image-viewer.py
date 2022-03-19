@@ -2,7 +2,7 @@
 
 import os
 import argparse
-import ImageViewer
+from src import ImageViewer
 
 parser = argparse.ArgumentParser(description="IWImageViewer")
 parser.add_argument( 'address', nargs='?', default=None, help = 'Image address' )

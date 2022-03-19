@@ -10,6 +10,9 @@ from gi.repository import GObject
 from gi.repository import Gdk
 from gi.repository import GLib
 
+from .Places import UI_FOLDER
+from .Places import CSS_FOLDER
+
 DEFAULT_SIZE = (300, 300)
 ZOOM_FACTOR = 0.9
 
@@ -25,9 +28,6 @@ MOVE_IMAGE_INCREMENT = 20
 
 SCROLL_ADJUST_HORIZONTAL = 0
 SCROLL_ADJUST_VERTICAL = 1
-
-path = os.path.abspath(__file__)
-MAIN_FOLDER = os.path.dirname(path)
 
 
 ## Decorators
@@ -141,7 +141,7 @@ class Interface:
 
         # setup ui builder
         self.builder = Gtk.Builder.new()
-        ui_file = os.path.join(MAIN_FOLDER, 'ui/Main.glade')
+        ui_file = os.path.join(UI_FOLDER, 'Main.glade')
         self.builder.add_from_file(ui_file)
         self.loadHeaderBar()
 
@@ -203,7 +203,7 @@ class Interface:
     ######################
     def loadHeaderBar(self):
         if Gtk.get_major_version() == 3 and Gtk.get_minor_version() >= 10:
-            header_file = os.path.join(MAIN_FOLDER, 'ui/HeaderBar.glade')
+            header_file = os.path.join(UI_FOLDER, 'HeaderBar.glade')
             self.builder.add_from_file(header_file)
             self.legacy_header = False
         else:
@@ -264,7 +264,7 @@ class Interface:
     ################
     def loadCss(self):
         provider = self._addCssProvider()
-        css_file = os.path.join(MAIN_FOLDER, 'css/style.css')
+        css_file = os.path.join(CSS_FOLDER, 'style.css')
         provider.load_from_path(css_file)
 
     def _addCssProvider(self):

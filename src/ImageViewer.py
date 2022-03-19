@@ -22,10 +22,8 @@ try:
 except ImportError:
     INOTIFY = False
 
-from Interface import Interface
+from src.Interface import Interface
 
-from gi.repository import GObject
-from gi.repository import Gio
 from gi.repository import GLib
 from gi.repository import Gdk
 from gi.repository import GdkPixbuf
