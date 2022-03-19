@@ -6,19 +6,17 @@ Simple image viewer in Gtk.
 Install the .deb from the release page.
 
 
-## Usage
+## Shortcuts
 
-Controls:
-
-  * Right/left arrow to navigate the images
+* Navigation: Right/left arrows
   
-  * Mouse scroll or +, - to zoom
+* Zoom: Mouse scroll or +/-
   
-  * f11 to fullscreen
+* Fullscreen: F11 
   
-  * ctrl+q to exit
+* Exit: Ctrl+q
   
-  * ctrl+0 to reset the zoom (fit the image to the window)
+* Fit to window: Ctrl+0
 
 
 ## Development
@@ -38,7 +36,7 @@ pip install -r requirements.txt
 
 ### Todo
 
-  * Better folder monitoring
+* Better folder monitoring
   
-  * Interface fixes depending on Gtk version
+* Interface fixes depending on Gtk version
   
