@@ -56,9 +56,13 @@ docs/_build/
 # PyBuilder
 target/
 
+venv/
+.idea/
+
 # Misc
 DEBIAN/
 OLD/
 TODO.txt
 css/_ignore
 icons/_ignore
+test/
