@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import random
 
 from PIL import Image
 
@@ -392,11 +393,12 @@ class IWImage:
 # Image Viewer
 class ImageViewer:
 
-    def __init__(self, config):
+    def __init__(self, config, shuffle=False):
         self.config = config
         self.interface = self.setupInterface()
         self.current_image = None
         self.files_in_folder = []
+        self.shuffle = shuffle
         # Inotify
         if INOTIFY:
             self.pyinotify_wm = pyinotify.WatchManager()
@@ -418,8 +420,8 @@ class ImageViewer:
     def start(self, imagepath=None):
         if imagepath is not None:
             current_folder = os.path.dirname(imagepath)
-            self.files_in_folder = self.readFolder(current_folder)
             self.current_image = self.openImage(imagepath)
+            self.setFilesInFolder(self.readFolder(current_folder))
             self.inotifyAdd(current_folder)
             self.setCurrentImagePosition()
         self.interface.start(self.current_image)
@@ -500,7 +502,7 @@ class ImageViewer:
                 candidate_path = os.path.join(folder, filename)
                 el_files = self.readFolder(candidate_path)
                 if len(el_files) > 0:
-                    self.files_in_folder = el_files
+                    self.setFilesInFolder(el_files)
                     position = 0 if get == OPEN_NEXT else -1
                     element = os.path.join(candidate_path, el_files[position])
                     break
@@ -600,9 +602,21 @@ class ImageViewer:
     def addToFilelist(self, path):
         # TODO: better, this is kinda lazy
         current_folder = os.path.dirname(path)
-        self.files_in_folder = self.readFolder(current_folder)
+        self.setFilesInFolder(self.readFolder(current_folder))
         # update interface
         self.updateFolderData()
+
+    def setFilesInFolder(self, files):
+        if self.shuffle:
+            # Re-shuffle, but keep the current image as first
+            removed_current = False
+            if self.current_image is not None and self.current_image.getName() in files:
+                files.remove(self.current_image.getName())
+                removed_current = True
+            random.shuffle(files)
+            if removed_current:
+                files.insert(0, self.current_image.getName())
+        self.files_in_folder = files
 
     def removeFromFilelist(self, path):
         filename = os.path.basename(path)
@@ -619,6 +633,6 @@ class ImageViewer:
         return len(os.listdir(folder)) == 0
 
 
-def new(config_folder):
+def new(config_folder, shuffle):
     config = readConfig(config_folder)
-    return ImageViewer(config)
+    return ImageViewer(config, shuffle=shuffle)
