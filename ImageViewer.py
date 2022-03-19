@@ -17,6 +17,7 @@ except ImportError:
 # Import pyinotify if possible
 try:
     import pyinotify
+
     INOTIFY = True
 except ImportError:
     INOTIFY = False
@@ -46,23 +47,24 @@ IMAGE_BG_TYPE_COLOUR = 'colour'
 IMAGE_BG_TYPE_PATTERN = 'pattern'
 IMAGE_BG_TYPE_AS_APP = 'same_main'
 
-DEFAULT_CONFIG = {CONFIG_WINDOW_WIDTH : '100',
-                                    CONFIG_WINDOW_HEIGHT : '100',
-                                    CONFIG_WINDOW_FULLSCREEN : 'False',
-                                    CONFIG_BG_COLOUR : 'rgb(0,0,0)',
-                                    CONFIG_IMAGE_BG_TYPE : IMAGE_BG_TYPE_PATTERN,
-                                    CONFIG_IMAGE_BG_COLOUR : 'rgb(0,0,0)'}
+DEFAULT_CONFIG = {CONFIG_WINDOW_WIDTH: '100',
+                  CONFIG_WINDOW_HEIGHT: '100',
+                  CONFIG_WINDOW_FULLSCREEN: 'False',
+                  CONFIG_BG_COLOUR: 'rgb(0,0,0)',
+                  CONFIG_IMAGE_BG_TYPE: IMAGE_BG_TYPE_PATTERN,
+                  CONFIG_IMAGE_BG_COLOUR: 'rgb(0,0,0)'}
 
 SUPPORTED_STATIC = ['.png', '.jpg', '.jpeg', '.bmp', '.webp']
 SUPPORTED_ANIMATION = ['.gif']
 
-ANIMATION_RATE = 60.0 # 60 FPS (too high?)
+ANIMATION_RATE = 60.0  # 60 FPS (too high?)
 
 ANIMATION_DELAY = 1 / ANIMATION_RATE
 
-INOTIFY_TIMEOUT = 10 # Keep this number low
+INOTIFY_TIMEOUT = 10  # Keep this number low
 
-SIZE_DIFF = 112 # This size diff is due to the HeaderBar
+SIZE_DIFF = 112  # This size diff is due to the HeaderBar
+
 
 ## Inotify check
 def ifInotify(method):
@@ -71,7 +73,9 @@ def ifInotify(method):
             return None
         else:
             return method(self, *args, **kwargs)
+
     return new
+
 
 if INOTIFY:
     ## Inotify Handler
@@ -103,7 +107,9 @@ if INOTIFY:
 
 CACHE_MAX_SIZE = 50
 USE_PIL_GIF = False
-class AnimationCache():
+
+
+class AnimationCache:
 
     def __init__(self):
         self.cache = {}
@@ -136,7 +142,7 @@ class AnimationCache():
         return False
 
 
-class GIFFrame():
+class GIFFrame:
 
     def __init__(self, delay, pixbuf):
         self.delay = delay
@@ -147,6 +153,7 @@ class GIFFrame():
 
     def getPixbuf(self):
         return self.pixbuf
+
 
 # Calling pixbuf.scale_simple may cause a segmentation fault, see:
 # https://bugzilla.gnome.org/show_bug.cgi?id=747431
@@ -166,7 +173,8 @@ def convertPilImageToGdkPixbuf(image, width=None, height=None):
         row_stride = 3 * width
     return GdkPixbuf.Pixbuf.new_from_bytes(data, GdkPixbuf.Colorspace.RGB, has_alpha, 8, width, height, row_stride)
 
-class GIFAnimation():
+
+class GIFAnimation:
 
     def __init__(self, path):
         self.path = path
@@ -208,7 +216,7 @@ class GIFAnimation():
         # Convert
         img = img.convert('RGBA')
         # Add transparency
-        #if transparency is not None:
+        # if transparency is not None:
         #    img = self.addTransparency(img, transparency)
         # Add background
         if background is not None:
@@ -219,7 +227,7 @@ class GIFAnimation():
         return img, duration
 
     def addBackground(self, img, background):
-        background.paste(img, (0,0))
+        background.paste(img, (0, 0))
         return background
 
     def addTransparency(self, frame, trasparency):
@@ -229,7 +237,7 @@ class GIFAnimation():
         return img
 
     def findMask(self, frame, trasparency):
-        img = frame.point(lambda x : 0 if x == trasparency else 255).convert('L')
+        img = frame.point(lambda x: 0 if x == trasparency else 255).convert('L')
         return img
 
     def isAnimated(self):
@@ -283,44 +291,44 @@ class GIFAnimation():
 
 
 ## IWImage
-class IWImage():
+class IWImage:
 
-  def __init__(self, path):
-    self.path = path
-    self.position = -1
-    _, extension = os.path.splitext(self.path)
-    self.extension = extension.lower()
-    self.name = os.path.basename(self.path)
-    self.folder = os.path.dirname(self.path)
-    self.is_static = True
-    self.setError()
-    self.load()
+    def __init__(self, path):
+        self.path = path
+        self.position = -1
+        _, extension = os.path.splitext(self.path)
+        self.extension = extension.lower()
+        self.name = os.path.basename(self.path)
+        self.folder = os.path.dirname(self.path)
+        self.is_static = True
+        self.setError()
+        self.load()
 
-  def setError(self):
-    self.pixbuf = None
-    self.size = None
-    self.is_resizable = False
-    self.error_loading = True
+    def setError(self):
+        self.pixbuf = None
+        self.size = None
+        self.is_resizable = False
+        self.error_loading = True
 
-  def load(self):
-    if self.extension in SUPPORTED_STATIC:
-      self.loadStaticImage()
-    elif self.extension in SUPPORTED_ANIMATION:
-      self.loadAnimation()
-    else:
-      self.setError()
+    def load(self):
+        if self.extension in SUPPORTED_STATIC:
+            self.loadStaticImage()
+        elif self.extension in SUPPORTED_ANIMATION:
+            self.loadAnimation()
+        else:
+            self.setError()
 
-  def loadStaticImage(self):
-    try:
-      self.pixbuf = self._loadPixbuf()
-      self.size = (self.pixbuf.get_width(), self.pixbuf.get_height())
-      self.is_resizable = True
-      self.error_loading = False
-      self.is_static = True
-    except Exception:
-      self.setError()
+    def loadStaticImage(self):
+        try:
+            self.pixbuf = self._loadPixbuf()
+            self.size = (self.pixbuf.get_width(), self.pixbuf.get_height())
+            self.is_resizable = True
+            self.error_loading = False
+            self.is_static = True
+        except Exception:
+            self.setError()
 
-  def _loadPixbuf(self):
+    def _loadPixbuf(self):
         if self.extension == '.webp':
             pixbuf = convertPilImageToGdkPixbuf(Image.open(self.path))
         else:
@@ -330,82 +338,83 @@ class IWImage():
                 pixbuf = convertPilImageToGdkPixbuf(Image.open(self.path))
         return pixbuf
 
-  def loadAnimation(self):
-    try:
-      if USE_PIL_GIF:
-        self.animation = GIFAnimation(self.path)
-      else:
-        self.animation = GdkPixbuf.PixbufAnimation.new_from_file(self.path)
-      if self.animation.is_static_image():
-        self.loadStaticImage()
-      else:
-        self.animation_iter = self.animation.get_iter()
-        self.size = (self.animation.get_width(), self.animation.get_height())
-        self.animation_size = self.size
-        self.is_resizable = True
-        self.error_loading = False
-        self.is_static = False
-    except Exception:
-      self.setError()
+    def loadAnimation(self):
+        try:
+            if USE_PIL_GIF:
+                self.animation = GIFAnimation(self.path)
+            else:
+                self.animation = GdkPixbuf.PixbufAnimation.new_from_file(self.path)
+            if self.animation.is_static_image():
+                self.loadStaticImage()
+            else:
+                self.animation_iter = self.animation.get_iter()
+                self.size = (self.animation.get_width(), self.animation.get_height())
+                self.animation_size = self.size
+                self.is_resizable = True
+                self.error_loading = False
+                self.is_static = False
+        except Exception:
+            self.setError()
 
-  def isAnimation(self):
-    return not self.error_loading and not self.is_static
+    def isAnimation(self):
+        return not self.error_loading and not self.is_static
 
-  def isStatic(self):
-    return not self.error_loading and self.is_static
+    def isStatic(self):
+        return not self.error_loading and self.is_static
 
-  def isError(self):
-    return self.error_loading
+    def isError(self):
+        return self.error_loading
 
-  def scale(self, width, height):
-    if self.isStatic():
-      return self.pixbuf.scale_simple(width, height, GdkPixbuf.InterpType.BILINEAR)
-    elif self.isAnimation():
-      self.animation_size = (width, height)
-      return None
-    else:
-      return None
+    def scale(self, width, height):
+        if self.isStatic():
+            return self.pixbuf.scale_simple(width, height, GdkPixbuf.InterpType.BILINEAR)
+        elif self.isAnimation():
+            self.animation_size = (width, height)
+            return None
+        else:
+            return None
 
-  def getAnimationPixbuf(self):
-    self.animation_iter.advance()
-    width, height = self.animation_size
-    # Get Pixbuf
-    if USE_PIL_GIF:
-      res_pixbuf = self.animation.getPixbuf(width, height)
-    else:
-      pixbuf = self.animation_iter.get_pixbuf()
-      res_pixbuf = pixbuf.scale_simple(width, height, GdkPixbuf.InterpType.BILINEAR)
-    return self.animation_iter, res_pixbuf
+    def getAnimationPixbuf(self):
+        self.animation_iter.advance()
+        width, height = self.animation_size
+        # Get Pixbuf
+        if USE_PIL_GIF:
+            res_pixbuf = self.animation.getPixbuf(width, height)
+        else:
+            pixbuf = self.animation_iter.get_pixbuf()
+            res_pixbuf = pixbuf.scale_simple(width, height, GdkPixbuf.InterpType.BILINEAR)
+        return self.animation_iter, res_pixbuf
 
-  def isResizable(self):
-    return self.is_resizable
+    def isResizable(self):
+        return self.is_resizable
 
-  def getSize(self):
-    return self.size
+    def getSize(self):
+        return self.size
 
-  def getFilepath(self):
-    return self.path
+    def getFilepath(self):
+        return self.path
 
-  def getName(self):
-    return self.name
+    def getName(self):
+        return self.name
 
-  def getPixbuf(self):
-    return self.pixbuf
+    def getPixbuf(self):
+        return self.pixbuf
 
-  def getFolder(self):
-    return self.folder
+    def getFolder(self):
+        return self.folder
 
-  def getFolderName(self):
-    return os.path.basename(self.folder)
+    def getFolderName(self):
+        return os.path.basename(self.folder)
 
-  def setPosition(self, position):
-    self.position = position
+    def setPosition(self, position):
+        self.position = position
 
-  def getPosition(self):
-    return self.position
+    def getPosition(self):
+        return self.position
+
 
 # Image Viewer
-class ImageViewer():
+class ImageViewer:
 
     def __init__(self, config_folder):
         self.config_folder = config_folder
@@ -566,7 +575,6 @@ class ImageViewer():
             self.current_image = self.openImage(new_image, new_position)
             self.interface.openImage(self.current_image)
 
-
     def openUpperFolder(self, get):
         # Get all the files/folders
         folder = os.path.dirname(self.current_image.getFolder())
@@ -633,7 +641,6 @@ class ImageViewer():
         else:
             # error
             return -1
-
 
     def isSupportedExtension(self, ext):
         return ext.lower() in SUPPORTED_STATIC or ext.lower() in SUPPORTED_ANIMATION
@@ -723,6 +730,7 @@ class ImageViewer():
 
     def folderIsEmpty(self, folder):
         return len(os.listdir(folder)) == 0
+
 
 def new(*args, **kwargs):
     iw = ImageViewer(*args, **kwargs)

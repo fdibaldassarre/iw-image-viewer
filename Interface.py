@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import gi
+
 gi.require_version('Gtk', '3.0')
 
 import os
@@ -25,8 +26,9 @@ MOVE_IMAGE_INCREMENT = 20
 SCROLL_ADJUST_HORIZONTAL = 0
 SCROLL_ADJUST_VERTICAL = 1
 
-path = os.path.abspath( __file__ )
-MAIN_FOLDER = os.path.dirname( path )
+path = os.path.abspath(__file__)
+MAIN_FOLDER = os.path.dirname(path)
+
 
 ## Decorators
 def imageIsResizable(method):
@@ -35,7 +37,9 @@ def imageIsResizable(method):
             return method(self, *args, **kwargs)
         else:
             return False
+
     return new
+
 
 def imageIsNotError(method):
     def new(self, *args, **kwargs):
@@ -43,7 +47,9 @@ def imageIsNotError(method):
             return method(self, *args, **kwargs)
         else:
             return False
+
     return new
+
 
 def imageIsNotNone(method):
     def new(self, *args, **kwargs):
@@ -51,11 +57,12 @@ def imageIsNotNone(method):
             return method(self, *args, **kwargs)
         else:
             return False
+
     return new
 
 
 ## Signals Handler
-class SHandler():
+class SHandler:
 
     def __init__(self, interface):
         self.interface = interface
@@ -124,7 +131,7 @@ class SHandler():
 
 ## Interface class
 
-class Interface():
+class Interface:
 
     def __init__(self, image_viewer):
         self.image_viewer = image_viewer
@@ -140,8 +147,8 @@ class Interface():
 
         self.main_window = self.builder.get_object('MainWindow')
         self.image_widget = self.builder.get_object('Image')
-        #self.image_widget.set_name('image-checked')
-        #self.main_window.add_events(Gdk.EventMask.STRUCTURE_MASK)
+        # self.image_widget.set_name('image-checked')
+        # self.main_window.add_events(Gdk.EventMask.STRUCTURE_MASK)
         self.main_window.set_size_request(*DEFAULT_SIZE)
         self.main_window.set_title('Image Viewer')
 
@@ -151,7 +158,8 @@ class Interface():
         scrolled_window = self.builder.get_object('ScrolledWindow')
         scrolled_window.set_min_content_width(MIN_CONTENT_SIZE)
         scrolled_window.set_min_content_height(MIN_CONTENT_SIZE)
-        scrolled_window.add_events(Gdk.EventMask.POINTER_MOTION_MASK | Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.BUTTON_RELEASE_MASK)
+        scrolled_window.add_events(
+            Gdk.EventMask.POINTER_MOTION_MASK | Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.BUTTON_RELEASE_MASK)
 
         self.setErrorImage()
 
@@ -456,7 +464,7 @@ class Interface():
             self.fitImageToWindow()
             self.fillInfo()
         self.open_image_timeout = None
-        return False # Stop timeout
+        return False  # Stop timeout
 
     def setErrorImage(self):
         pixbuf = Gtk.IconTheme.get_default().load_icon(MISSING_IMAGE_ICON, 64, 0)
@@ -515,7 +523,7 @@ class Interface():
         elif key_val == Gdk.KEY_Left:
             self.prevImage()
         elif key_val == Gdk.KEY_Up:
-            self.scrollVertical(-1*MOVE_IMAGE_INCREMENT)
+            self.scrollVertical(-1 * MOVE_IMAGE_INCREMENT)
         elif key_val == Gdk.KEY_Down:
             self.scrollVertical(MOVE_IMAGE_INCREMENT)
         elif key_val == Gdk.KEY_plus or key_val == Gdk.KEY_equal:
@@ -601,7 +609,7 @@ class Interface():
     def scrollVertical(self, increment):
         scrolled_window = self.builder.get_object('ScrolledWindow')
         adjust = scrolled_window.get_vadjustment()
-        adjust.set_value( adjust.get_value() + increment )
+        adjust.set_value(adjust.get_value() + increment)
 
     def scrollRelativeToMouse(self, widget, position_type):
         self.scroll_zoom_number = 0
@@ -674,9 +682,9 @@ class Interface():
         height = adjust.get_page_size()
         img_width, img_height = self.image.getSize()
         if not self.user_set_zoom:
-            if img_width > width-5 or img_height > height-5:
+            if img_width > width - 5 or img_height > height - 5:
                 # zoom to window size
-                self.zoom((width-5, height-5))
+                self.zoom((width - 5, height - 5))
             else:
                 # zoom to image size
                 self.zoom((img_width, img_height))
@@ -743,7 +751,7 @@ class Interface():
     def fillZoomInfo(self):
         label = self.builder.get_object('InfoSize')
         width, height = self.image.getSize()
-        label_str = str(width) + 'x' + str(height) + ' (' + str(round(self.current_factor*100, 1)) + '%)'
+        label_str = str(width) + 'x' + str(height) + ' (' + str(round(self.current_factor * 100, 1)) + '%)'
         label.set_text(label_str)
 
     def setEmptyInfo(self):
