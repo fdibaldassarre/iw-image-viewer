@@ -5,12 +5,15 @@ import argparse
 from src import ImageViewer
 
 parser = argparse.ArgumentParser(description="IWImageViewer")
-parser.add_argument("address", nargs=1, help="Image address")
+parser.add_argument("address", nargs="*", help="Image address")
 parser.add_argument("--shuffle", action="store_true", help="Shuffle")
 
 args = parser.parse_args()
 
-address = os.path.realpath(args.address[0])
+if len(args.address) > 0:
+  address = os.path.realpath(args.address[0])
+else:
+  address = None
 
 config_folder = os.path.join(os.environ['HOME'], ".config/iw-image-viewer/")
 
