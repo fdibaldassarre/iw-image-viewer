@@ -13,6 +13,8 @@ from gi.repository import GLib
 from .Places import UI_FOLDER
 from .Places import CSS_FOLDER
 
+from .ImageViewer import INOTIFY
+
 DEFAULT_SIZE = (300, 300)
 ZOOM_FACTOR = 0.9
 
@@ -337,7 +339,7 @@ class Interface:
     ## Main controls ##
     ###################
     def start(self, image):
-        if self.image_viewer.has_inotify:
+        if INOTIFY:
             self.inotify_timeout = GObject.timeout_add(500, self.checkInotify)
         else:
             self.inotify_timeout = None

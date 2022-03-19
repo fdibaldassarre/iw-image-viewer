@@ -45,7 +45,7 @@ SIZE_DIFF = 112  # This size diff is due to the HeaderBar
 ## Inotify check
 def ifInotify(method):
     def new(self, *args, **kwargs):
-        if not self.has_inotify:
+        if not INOTIFY:
             return None
         else:
             return method(self, *args, **kwargs)
@@ -399,17 +399,11 @@ class ImageViewer:
         self.files_in_folder = []
         # Inotify
         if INOTIFY:
-            self.has_inotify = True
             self.pyinotify_wm = pyinotify.WatchManager()
             self.pyinotify_mask = pyinotify.IN_DELETE | pyinotify.IN_CREATE | pyinotify.IN_MOVED_FROM | pyinotify.IN_MOVED_TO
             handler = InotifyEventHandler(self)
             self.pyinotify_notifier = pyinotify.Notifier(self.pyinotify_wm, handler, timeout=INOTIFY_TIMEOUT)
             self.pyinotify_wdd = {}
-        else:
-            self.has_inotify = False
-
-    def saveConfig(self):
-        self.config.save()
 
     def setupInterface(self):
         width, height, isFullscreen = self.config.getWindowLastStatus()
@@ -436,7 +430,7 @@ class ImageViewer:
         isFullscreen = self.interface.getFullscreen()
         self.config.setWindowLastStatus(width, height, isFullscreen)
         # save config
-        self.saveConfig()
+        self.config.save()
 
     def stop(self):
         self.interface.close()
@@ -474,7 +468,7 @@ class ImageViewer:
             new_image = None
             new_position = -1
 
-        # open pallel folder if necessary
+        # open parallel folder if necessary
         if new_image is None:
             new_image, new_position = self.openUpperFolder(open_type)
             if new_image is not None:
@@ -491,7 +485,7 @@ class ImageViewer:
         # Get all the files/folders
         folder = os.path.dirname(self.current_image.getFolder())
         current_folder_name = os.path.basename(self.current_image.getFolder())
-        files = self.readFolder(folder, True)
+        files = self.getFoldersIn(folder)
         # Reverse the array if get prev
         if get == OPEN_PREV:
             files.reverse()
@@ -502,30 +496,14 @@ class ImageViewer:
             if filename == current_folder_name:
                 next = True
             elif next:
-                # check if the element is valid
+                # read folder
                 candidate_path = os.path.join(folder, filename)
-                if os.path.isdir(candidate_path):
-                    # read folder
-                    el_files = self.readFolder(candidate_path)
-                    if len(el_files) > 0:
-                        self.files_in_folder = el_files
-                        position = 0 if get == OPEN_NEXT else -1
-                        element = os.path.join(candidate_path, el_files[position])
-                        break
-                '''
-                # Note: I do not consider files while reading the upper folder
-                # because I read only files on the same level
-                # i.e. files in the folders ~/Pictures/ and ~/Documents
-                # are on the same level, pictures in
-                # ~/Pictures and ~/Pictures/ex1 are not.
-                else:
-                    # reorder the files correctly
-                    if get == OPEN_PREV:
-                        files.reverse()
-                    self.files_in_folder = self.removeFoldersFromArray(files)
-                    element = candidate_path
-                break
-                '''
+                el_files = self.readFolder(candidate_path)
+                if len(el_files) > 0:
+                    self.files_in_folder = el_files
+                    position = 0 if get == OPEN_NEXT else -1
+                    element = os.path.join(candidate_path, el_files[position])
+                    break
         # get element position
         if element is None:
             position = -1
@@ -557,41 +535,38 @@ class ImageViewer:
     def isSupportedExtension(self, ext):
         return ext.lower() in SUPPORTED_STATIC or ext.lower() in SUPPORTED_ANIMATION
 
-    def readFolder(self, folder, include_folders=False):
-        all_files = os.listdir(folder)
+    def getFoldersIn(self, folder):
         folders = {}
-        folders_keys = []
-        if include_folders:
-            for filename in all_files:
-                if filename[0] == '.':
-                    continue
-                filepath = os.path.join(folder, filename)
-                if os.path.isdir(filepath):
-                    f_lower = filename.lower()
-                    if f_lower in folders:
-                        folders[f_lower].append(filename)
-                    else:
-                        folders[f_lower] = [filename]
-            folders_keys = natsorted(folders.keys())
+        for filename in os.listdir(folder):
+            filepath = os.path.join(folder, filename)
+            if os.path.isdir(filepath):
+                f_lower = filename.lower()
+                if f_lower not in folders:
+                    folders[f_lower] = list()
+                folders[f_lower].append(filename)
+        folders_keys = natsorted(folders.keys())
+        sorted_files = list()
+        for el in folders_keys:
+            fls = folders[el]
+            fls.sort()
+            sorted_files.extend(fls)
+        return sorted_files
+
+    def readFolder(self, folder):
+        all_files = os.listdir(folder)
         valid_files = {}
-        valid_files_keys = []
         for filename in all_files:
             if filename[0] == '.':
                 continue
             _, ext = os.path.splitext(filename)
             if self.isSupportedExtension(ext):
                 f_lower = filename.lower()
-                if f_lower in valid_files:
-                    valid_files[f_lower].append(filename)
-                else:
-                    valid_files[f_lower] = [filename]
+                if f_lower not in valid_files:
+                    valid_files[f_lower] = list()
+                valid_files[f_lower].append(filename)
         valid_files_keys = natsorted(valid_files.keys())
         # Compose
         sorted_files = []
-        for el in folders_keys:
-            fls = folders[el]
-            fls.sort()
-            sorted_files.extend(fls)
         for el in valid_files_keys:
             fls = valid_files[el]
             fls.sort()
