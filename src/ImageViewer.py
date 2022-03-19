@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import os
-import configparser
 
 from PIL import Image
 
@@ -17,7 +16,6 @@ except ImportError:
 # Import pyinotify if possible
 try:
     import pyinotify
-
     INOTIFY = True
 except ImportError:
     INOTIFY = False
@@ -25,32 +23,12 @@ except ImportError:
 from src.Interface import Interface
 
 from gi.repository import GLib
-from gi.repository import Gdk
 from gi.repository import GdkPixbuf
+
+from .configuration import readConfig
 
 OPEN_NEXT = 0
 OPEN_PREV = 1
-
-CONFIG_SECTION_DEFAULT = 'DEFAULT'
-CONFIG_SECTION_PREFS = 'Preferences'
-
-CONFIG_WINDOW_WIDTH = 'Window_width'
-CONFIG_WINDOW_HEIGHT = 'Window_height'
-CONFIG_WINDOW_FULLSCREEN = 'Window_fullscreen'
-CONFIG_BG_COLOUR = 'BG_colour'
-CONFIG_IMAGE_BG_TYPE = 'BG_image_type'
-CONFIG_IMAGE_BG_COLOUR = 'BG_image_colour'
-
-IMAGE_BG_TYPE_COLOUR = 'colour'
-IMAGE_BG_TYPE_PATTERN = 'pattern'
-IMAGE_BG_TYPE_AS_APP = 'same_main'
-
-DEFAULT_CONFIG = {CONFIG_WINDOW_WIDTH: '100',
-                  CONFIG_WINDOW_HEIGHT: '100',
-                  CONFIG_WINDOW_FULLSCREEN: 'False',
-                  CONFIG_BG_COLOUR: 'rgb(0,0,0)',
-                  CONFIG_IMAGE_BG_TYPE: IMAGE_BG_TYPE_PATTERN,
-                  CONFIG_IMAGE_BG_COLOUR: 'rgb(0,0,0)'}
 
 SUPPORTED_STATIC = ['.png', '.jpg', '.jpeg', '.bmp', '.webp']
 SUPPORTED_ANIMATION = ['.gif']
@@ -414,12 +392,9 @@ class IWImage:
 # Image Viewer
 class ImageViewer:
 
-    def __init__(self, config_folder):
-        self.config_folder = config_folder
-        if not os.path.exists(self.config_folder):
-            os.mkdir(self.config_folder)
-        self.loadConfig()
-        self.setupInterface()
+    def __init__(self, config):
+        self.config = config
+        self.interface = self.setupInterface()
         self.current_image = None
         self.files_in_folder = []
         # Inotify
@@ -433,76 +408,17 @@ class ImageViewer:
         else:
             self.has_inotify = False
 
-    def loadConfig(self):
-        self.config = configparser.SafeConfigParser(DEFAULT_CONFIG)
-        self.config_file = os.path.join(self.config_folder, 'config.txt')
-        self.config.read(self.config_file)
-
-    def getConfig(self, param):
-        return self.config.get(CONFIG_SECTION_DEFAULT, param)
-
-    def getConfigInt(self, param):
-        return int(self.config.get(CONFIG_SECTION_DEFAULT, param))
-
-    def getConfigColour(self, param):
-        col_str = self.getConfig(param)
-        colour = Gdk.RGBA()
-        colour.parse(col_str)
-        return colour
-
-    def getConfigBool(self, param):
-        if self.config.get(CONFIG_SECTION_DEFAULT, param).lower() == 'true':
-            return True
-        else:
-            return False
-
-    def setConfig(self, param, value):
-        self.config[CONFIG_SECTION_DEFAULT][param] = str(value)
-
     def saveConfig(self):
-        self.config.write(open(self.config_file, 'w'))
+        self.config.save()
 
     def setupInterface(self):
-        width = self.getConfigInt(CONFIG_WINDOW_WIDTH)
-        height = self.getConfigInt(CONFIG_WINDOW_HEIGHT)
-        request_size = (width, height)
-        self.interface = Interface(self)
-        self.interface.resize(request_size)
-        if self.getConfigBool(CONFIG_WINDOW_FULLSCREEN):
-            self.interface.modeFullscreen(True)
-        self.interface.show()
-
-    ## CONFIG INTERFACE GET
-    def getInterfaceBGColour(self):
-        return self.getConfigColour(CONFIG_BG_COLOUR)
-
-    def isInterfaceImageBGPattern(self):
-        return self.getConfig(CONFIG_IMAGE_BG_TYPE) == IMAGE_BG_TYPE_PATTERN
-
-    def isInterfaceImageBGAsMain(self):
-        return self.getConfig(CONFIG_IMAGE_BG_TYPE) == IMAGE_BG_TYPE_AS_APP
-
-    def isInterfaceImageBGColour(self):
-        return self.getConfig(CONFIG_IMAGE_BG_TYPE) == IMAGE_BG_TYPE_COLOUR
-
-    def getInterfaceImageBGColour(self):
-        return self.getConfigColour(CONFIG_IMAGE_BG_COLOUR)
-
-    ## CONFIG INTERFACE SET
-    def setInterfaceBGColour(self, colour):
-        self.setConfig(CONFIG_BG_COLOUR, colour.to_string())
-
-    def setInterfaceImageBGTypePattern(self):
-        self.setConfig(CONFIG_IMAGE_BG_TYPE, IMAGE_BG_TYPE_PATTERN)
-
-    def setInterfaceImageBGTypeAsMain(self):
-        self.setConfig(CONFIG_IMAGE_BG_TYPE, IMAGE_BG_TYPE_AS_APP)
-
-    def setInterfaceImageBGTypeColour(self):
-        self.setConfig(CONFIG_IMAGE_BG_TYPE, IMAGE_BG_TYPE_COLOUR)
-
-    def setInterfaceImageBGColour(self, colour):
-        self.setConfig(CONFIG_IMAGE_BG_COLOUR, colour.to_string())
+        width, height, isFullscreen = self.config.getWindowLastStatus()
+        interface = Interface(self, self.config)
+        interface.resize((width, height))
+        if isFullscreen:
+            interface.modeFullscreen(True)
+        interface.show()
+        return interface
 
     ## START
     def start(self, imagepath=None):
@@ -517,10 +433,8 @@ class ImageViewer:
     def close(self):
         # save last window size
         width, height = self.interface.getSize()
-        fullscreen = self.interface.getFullscreen()
-        self.setConfig(CONFIG_WINDOW_WIDTH, width)
-        self.setConfig(CONFIG_WINDOW_HEIGHT, height)
-        self.setConfig(CONFIG_WINDOW_FULLSCREEN, fullscreen)
+        isFullscreen = self.interface.getFullscreen()
+        self.config.setWindowLastStatus(width, height, isFullscreen)
         # save config
         self.saveConfig()
 
@@ -730,6 +644,6 @@ class ImageViewer:
         return len(os.listdir(folder)) == 0
 
 
-def new(*args, **kwargs):
-    iw = ImageViewer(*args, **kwargs)
-    return iw
+def new(config_folder):
+    config = readConfig(config_folder)
+    return ImageViewer(config)

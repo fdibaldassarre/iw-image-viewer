@@ -133,8 +133,9 @@ class SHandler:
 
 class Interface:
 
-    def __init__(self, image_viewer):
+    def __init__(self, image_viewer, config):
         self.image_viewer = image_viewer
+        self.config = config
 
         # set program class
         Gdk.set_program_class("IW Image Viewer")
@@ -236,16 +237,16 @@ class Interface:
         # change color buttons
         ## main
         main_btn = self.builder.get_object('BGColourButton')
-        col = self.image_viewer.getInterfaceBGColour()
+        col = self.config.getInterfaceBGColour()
         main_btn.set_rgba(col)
         ## image
         img_btn = self.builder.get_object('ImageBGColourButton')
-        col = self.image_viewer.getInterfaceImageBGColour()
+        col = self.config.getInterfaceImageBGColour()
         img_btn.set_rgba(col)
         # toggle preferences
-        if self.image_viewer.isInterfaceImageBGAsMain():
+        if self.config.isInterfaceImageBGAsMain():
             btn = self.builder.get_object('ImageBGTypeSameMain')
-        elif self.image_viewer.isInterfaceImageBGPattern():
+        elif self.config.isInterfaceImageBGPattern():
             btn = self.builder.get_object('ImageBGTypeCheck')
         else:
             btn = self.builder.get_object('ImageBGTypeColour')
@@ -275,33 +276,33 @@ class Interface:
         return provider
 
     def applyColourSettings(self):
-        col = self.image_viewer.getInterfaceBGColour()
+        col = self.config.getInterfaceBGColour()
         self.changeMainBG(col)
-        if self.image_viewer.isInterfaceImageBGAsMain():
+        if self.config.isInterfaceImageBGAsMain():
             self.changeImageBgAsMain()
-        elif self.image_viewer.isInterfaceImageBGPattern():
+        elif self.config.isInterfaceImageBGPattern():
             self.changeImageBGCheckPattern()
         else:
-            colour = self.image_viewer.getInterfaceImageBGColour()
+            colour = self.config.getInterfaceImageBGColour()
             self.changeImageBGAsCustom(colour)
 
     ############################################
     ## Change BG colours and memorize changes ##
     ############################################
     def modifyMainBG(self, colour):
-        self.image_viewer.setInterfaceBGColour(colour)
+        self.config.setInterfaceBGColour(colour)
 
     def setImageBGCheckPattern(self):
-        self.image_viewer.setInterfaceImageBGTypePattern()
+        self.config.setInterfaceImageBGTypePattern()
 
     def setImageBgAsMain(self):
-        self.image_viewer.setInterfaceImageBGTypeAsMain()
+        self.config.setInterfaceImageBGTypeAsMain()
 
     def setImageBGAsCustom(self):
-        self.image_viewer.setInterfaceImageBGTypeColour()
+        self.config.setInterfaceImageBGTypeColour()
 
     def modifyImageBG(self, colour):
-        self.image_viewer.setInterfaceImageBGColour(colour)
+        self.config.setInterfaceImageBGColour(colour)
 
     #######################
     ## Change BG colours ##
@@ -313,7 +314,7 @@ class Interface:
         self.image_widget.set_name('image-checked')
 
     def changeImageBgAsMain(self):
-        col = self.image_viewer.getInterfaceBGColour()
+        col = self.config.getInterfaceBGColour()
         self.changeImageBG(col)
 
     def changeImageBGAsCustom(self, colour):
