@@ -132,7 +132,8 @@ class SHandler:
         if seconds.isdigit():
             # save and apply
             seconds = int(seconds)
-            self.interface.modifySlideshowSeconds(seconds)
+            if seconds > 0:
+                self.interface.modifySlideshowSeconds(seconds)
 
     def settingsClose(self, *args):
         self.interface.hideSettings()
@@ -384,13 +385,15 @@ class Interface:
     ###################
     ## Main controls ##
     ###################
-    def start(self, image):
+    def start(self, image, init_slideshow: bool = False):
         if INOTIFY:
             self.inotify_timeout = GObject.timeout_add(500, self.checkInotify)
         else:
             self.inotify_timeout = None
         # Wait for the widget to be completely drawn
         GObject.timeout_add(200, self.openImage, image)
+        if init_slideshow:
+            self.enableSlideshow()
         Gtk.main()
 
     def close(self, *args):
@@ -427,6 +430,10 @@ class Interface:
                 # wait for the window changes to have taken effect
                 GObject.timeout_add(100, self.fitImageToWindow)
         return False
+
+    def enableSlideshow(self):
+        btn = self.builder.get_object("SlideshowToggle")
+        btn.set_active(True)
 
     def toggleFullscreen(self):
         if self.main_window_fullscreen:

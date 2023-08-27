@@ -7,6 +7,7 @@ from src import ImageViewer
 parser = argparse.ArgumentParser(description="IWImageViewer")
 parser.add_argument("address", nargs="*", help="Image address")
 parser.add_argument("--shuffle", action="store_true", help="Shuffle")
+parser.add_argument("--slideshow", action="store_true", help="Slideshow")
 
 args = parser.parse_args()
 
@@ -17,5 +18,5 @@ else:
 
 config_folder = os.path.join(os.environ['HOME'], ".config/iw-image-viewer/")
 
-iw = ImageViewer.new(config_folder, shuffle=args.shuffle)
+iw = ImageViewer.new(config_folder, shuffle=args.shuffle, slideshow=args.slideshow)
 iw.start(address)

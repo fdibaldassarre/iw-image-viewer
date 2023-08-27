@@ -393,12 +393,13 @@ class IWImage:
 # Image Viewer
 class ImageViewer:
 
-    def __init__(self, config, shuffle=False):
+    def __init__(self, config, shuffle=False, slideshow: bool = False):
         self.config = config
         self.interface = self.setupInterface()
         self.current_image = None
         self.files_in_folder = []
         self.shuffle = shuffle
+        self.init_slideshow = slideshow
         # Inotify
         if INOTIFY:
             self.pyinotify_wm = pyinotify.WatchManager()
@@ -424,7 +425,7 @@ class ImageViewer:
             self.setFilesInFolder(self.readFolder(current_folder))
             self.inotifyAdd(current_folder)
             self.setCurrentImagePosition()
-        self.interface.start(self.current_image)
+        self.interface.start(self.current_image, init_slideshow=self.init_slideshow)
 
     def close(self):
         # save last window size
@@ -633,6 +634,6 @@ class ImageViewer:
         return len(os.listdir(folder)) == 0
 
 
-def new(config_folder, shuffle):
+def new(config_folder, shuffle, slideshow: bool):
     config = readConfig(config_folder)
-    return ImageViewer(config, shuffle=shuffle)
+    return ImageViewer(config, shuffle=shuffle, slideshow=slideshow)
