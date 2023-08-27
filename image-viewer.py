@@ -2,21 +2,20 @@
 
 import os
 import argparse
-from src import ImageViewer
+from src.application import ImageViewerApplication
 
-parser = argparse.ArgumentParser(description="IWImageViewer")
-parser.add_argument("address", nargs="*", help="Image address")
-parser.add_argument("--shuffle", action="store_true", help="Shuffle")
-parser.add_argument("--slideshow", action="store_true", help="Slideshow")
 
-args = parser.parse_args()
+def run():
+    parser = argparse.ArgumentParser(description="IWImageViewer")
+    parser.add_argument("address", nargs="*", help="Image address")
+    parser.add_argument("--shuffle", action="store_true", help="Shuffle")
+    parser.add_argument("--slideshow", action="store_true", help="Slideshow")
 
-if len(args.address) > 0:
-  address = os.path.realpath(args.address[0])
-else:
-  address = None
+    args = parser.parse_args()
 
-config_folder = os.path.join(os.environ['HOME'], ".config/iw-image-viewer/")
+    app = ImageViewerApplication(args)
+    app.run(None)
 
-iw = ImageViewer.new(config_folder, shuffle=args.shuffle, slideshow=args.slideshow)
-iw.start(address)
+
+if __name__ == "__main__":
+    run()

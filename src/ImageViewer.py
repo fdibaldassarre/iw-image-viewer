@@ -25,6 +25,7 @@ from src.Interface import Interface
 
 from gi.repository import GLib
 from gi.repository import GdkPixbuf
+from gi.repository import Gtk
 
 from .configuration import readConfig
 
@@ -393,7 +394,8 @@ class IWImage:
 # Image Viewer
 class ImageViewer:
 
-    def __init__(self, config, shuffle=False, slideshow: bool = False):
+    def __init__(self, application: Gtk.Application, config, shuffle=False, slideshow: bool = False):
+        self.application = application
         self.config = config
         self.interface = self.setupInterface()
         self.current_image = None
@@ -637,6 +639,6 @@ class ImageViewer:
         return len(os.listdir(folder)) == 0
 
 
-def new(config_folder, shuffle, slideshow: bool):
+def new(application, config_folder, shuffle, slideshow: bool):
     config = readConfig(config_folder)
-    return ImageViewer(config, shuffle=shuffle, slideshow=slideshow)
+    return ImageViewer(application, config, shuffle=shuffle, slideshow=slideshow)

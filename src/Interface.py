@@ -34,32 +34,32 @@ SCROLL_ADJUST_VERTICAL = 1
 
 ## Decorators
 def imageIsResizable(method):
-    def new(self, *args, **kwargs):
+    def new(*args, **kwargs):
+        self = args[0]
         if self.image is not None and self.image.isResizable():
-            return method(self, *args, **kwargs)
+            return method(*args, **kwargs)
         else:
             return False
-
     return new
 
 
 def imageIsNotError(method):
-    def new(self, *args, **kwargs):
+    def new(*args, **kwargs):
+        self = args[0]
         if self.image is not None and not self.image.isError():
-            return method(self, *args, **kwargs)
+            return method(*args, **kwargs)
         else:
             return False
-
     return new
 
 
 def imageIsNotNone(method):
-    def new(self, *args, **kwargs):
+    def new(*args, **kwargs):
+        self = args[0]
         if self.image is not None:
-            return method(self, *args, **kwargs)
+            return method(*args, **kwargs)
         else:
             return False
-
     return new
 
 
@@ -293,10 +293,12 @@ class Interface:
                 return
             seconds = self.config.getSlideshowSeconds()
             self.toggle_timeout = GObject.timeout_add(seconds * 1000, self.slideshowNextImage)
+            self.image_viewer.application.inhibit_sleep(True)
         else:
             if self.toggle_timeout is not None:
                 GObject.source_remove(self.toggle_timeout)
                 self.toggle_timeout = None
+                self.image_viewer.application.inhibit_sleep(False)
 
     def slideshowNextImage(self, *args):
         self.nextImage(loop_mode=True)
@@ -394,7 +396,7 @@ class Interface:
         GObject.timeout_add(200, self.openImage, image)
         if init_slideshow:
             self.enableSlideshow()
-        Gtk.main()
+        #Gtk.main()
 
     def close(self, *args):
         self.stopAnimationUpdate()
@@ -402,7 +404,7 @@ class Interface:
         if self.inotify_timeout is not None:
             GObject.source_remove(self.inotify_timeout)
         self.image_viewer.close()
-        Gtk.main_quit()
+        #Gtk.main_quit()
 
     def resize(self, size):
         self.main_window.resize(*size)
