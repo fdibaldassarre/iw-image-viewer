@@ -447,13 +447,13 @@ class ImageViewer:
         if self.pyinotify_wdd[path] > 0:
             self.pyinotify_wm.rm_watch(self.pyinotify_wdd[path])
 
-    def openNextImage(self):
-        self.openNearImage(OPEN_NEXT)
+    def openNextImage(self, **kwargs):
+        self.openNearImage(OPEN_NEXT, **kwargs)
 
-    def openPrevImage(self):
-        self.openNearImage(OPEN_PREV)
+    def openPrevImage(self, **kwargs):
+        self.openNearImage(OPEN_PREV, **kwargs)
 
-    def openNearImage(self, open_type):
+    def openNearImage(self, open_type, loop_mode: bool = False):
         current_name = self.current_image.getName()
         current_folder = self.current_image.getFolder()
         current_position = self.current_image.getPosition()
@@ -464,8 +464,11 @@ class ImageViewer:
         else:
             new_position = current_position - 1
 
+        if loop_mode:
+            new_position = new_position % len(self.files_in_folder)
+
         # get new image
-        if new_position >= 0 and new_position < len(self.files_in_folder):
+        if 0 <= new_position < len(self.files_in_folder):
             new_image = os.path.join(current_folder, self.files_in_folder[new_position])
         else:
             new_image = None

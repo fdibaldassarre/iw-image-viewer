@@ -292,14 +292,14 @@ class Interface:
             if self.toggle_timeout is not None:
                 return
             seconds = self.config.getSlideshowSeconds()
-            self.toggle_timeout = GObject.timeout_add(seconds * 1000, self.toggleNextImage)
+            self.toggle_timeout = GObject.timeout_add(seconds * 1000, self.slideshowNextImage)
         else:
             if self.toggle_timeout is not None:
                 GObject.source_remove(self.toggle_timeout)
                 self.toggle_timeout = None
 
-    def toggleNextImage(self, *args):
-        self.nextImage()
+    def slideshowNextImage(self, *args):
+        self.nextImage(loop_mode=True)
         return True
 
     ################
@@ -534,12 +534,12 @@ class Interface:
         self.updateAnimation()
 
     @imageIsNotNone
-    def nextImage(self):
-        self.image_viewer.openNextImage()
+    def nextImage(self, **kwargs):
+        self.image_viewer.openNextImage(**kwargs)
 
     @imageIsNotNone
-    def prevImage(self):
-        self.image_viewer.openPrevImage()
+    def prevImage(self, **kwargs):
+        self.image_viewer.openPrevImage(**kwargs)
 
     ####################
     ## Load Animation ##
