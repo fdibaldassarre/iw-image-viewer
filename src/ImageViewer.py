@@ -421,6 +421,7 @@ class ImageViewer:
 
     ## START
     def start(self, imagepath=None):
+        imagepath = self._get_image(imagepath)
         if imagepath is not None:
             current_folder = os.path.dirname(imagepath)
             self.current_image = self.openImage(imagepath)
@@ -428,6 +429,21 @@ class ImageViewer:
             self.inotifyAdd(current_folder)
             self.setCurrentImagePosition()
         self.interface.start(self.current_image, init_slideshow=self.init_slideshow)
+
+    def _get_image(self, path: str) -> str | None:
+        if path is None:
+            return None
+        if os.path.isdir(path):
+            # pick the first file in the folder
+            files = os.listdir(path)
+            files.sort()
+            if len(files) == 0:
+                return None
+            image_name = files[0]
+            imagepath = os.path.join(path, image_name)
+        else:
+            imagepath = path
+        return imagepath
 
     def close(self):
         # save last window size
