@@ -127,6 +127,13 @@ class SHandler:
         # apply
         self.interface.applyColourSettings()
 
+    def settings_slideshow_seconds_changed(self, widget):
+        seconds = widget.get_text().strip()
+        if seconds.isdigit():
+            # save and apply
+            seconds = int(seconds)
+            self.interface.modifySlideshowSeconds(seconds)
+
     def settingsClose(self, *args):
         self.interface.hideSettings()
 
@@ -197,6 +204,7 @@ class Interface:
         self.open_image_timeout = None
         self.inotify_timeout = None
         self.animation_update_timeout = None
+        self.toggle_timeout = None
 
         # Connect signals
         self.builder.connect_signals(SHandler(self))
@@ -229,6 +237,10 @@ class Interface:
         else:
             btn = self.builder.get_object('SettingsButton')
             btn.connect('clicked', self.openSettings)
+
+            toggle_btn = self.builder.get_object('SlideshowToggle')
+            toggle_btn.connect('toggled', self.toggleSlideshow)
+
             header_bar = self.builder.get_object('HeaderBar')
             self.main_window.set_titlebar(header_bar)
 
@@ -253,14 +265,41 @@ class Interface:
         else:
             btn = self.builder.get_object('ImageBGTypeColour')
         btn.set_active(True)
+        ## Slideshow
+        slideshow_seconds = self.config.getSlideshowSeconds()
+        slideshow_seconds_btn = self.builder.get_object("ToggleSeconds")
+        slideshow_seconds_btn.set_text(str(slideshow_seconds))
 
     def openSettings(self, *args):
+        if not self.legacy_header:
+            btn = self.builder.get_object('MenuButton')
+            btn.set_active(False)
+
         settings_win = self.builder.get_object('SettingsWindow')
         settings_win.show_all()
 
     def hideSettings(self):
         settings_win = self.builder.get_object('SettingsWindow')
         settings_win.hide()
+
+    def toggleSlideshow(self, *args):
+        menu_btn = self.builder.get_object('MenuButton')
+        menu_btn.set_active(False)
+
+        btn = self.builder.get_object('SlideshowToggle')
+        if btn.get_active():
+            if self.toggle_timeout is not None:
+                return
+            seconds = self.config.getSlideshowSeconds()
+            self.toggle_timeout = GObject.timeout_add(seconds * 1000, self.toggleNextImage)
+        else:
+            if self.toggle_timeout is not None:
+                GObject.source_remove(self.toggle_timeout)
+                self.toggle_timeout = None
+
+    def toggleNextImage(self, *args):
+        self.nextImage()
+        return True
 
     ################
     ## Load style ##
@@ -334,6 +373,13 @@ class Interface:
         # set class
         data = '#' + class_name + '{background-color: ' + colour_rgb + ';}'
         provider.load_from_data(bytes(data.encode()))
+
+    ###############
+    ## Slideshow ##
+    ###############
+    def modifySlideshowSeconds(self, seconds: int) -> None:
+        self.config.setSlideshowSeconds(seconds)
+
 
     ###################
     ## Main controls ##

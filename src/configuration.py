@@ -15,6 +15,7 @@ CONFIG_WINDOW_FULLSCREEN = 'Window_fullscreen'
 CONFIG_BG_COLOUR = 'BG_colour'
 CONFIG_IMAGE_BG_TYPE = 'BG_image_type'
 CONFIG_IMAGE_BG_COLOUR = 'BG_image_colour'
+CONFIG_SLIDESHOW_SECONDS = 'Slideshow_seconds'
 
 IMAGE_BG_TYPE_COLOUR = 'colour'
 IMAGE_BG_TYPE_PATTERN = 'pattern'
@@ -25,7 +26,9 @@ DEFAULT_CONFIG = {CONFIG_WINDOW_WIDTH: '100',
                   CONFIG_WINDOW_FULLSCREEN: 'False',
                   CONFIG_BG_COLOUR: 'rgb(0,0,0)',
                   CONFIG_IMAGE_BG_TYPE: IMAGE_BG_TYPE_PATTERN,
-                  CONFIG_IMAGE_BG_COLOUR: 'rgb(0,0,0)'}
+                  CONFIG_IMAGE_BG_COLOUR: 'rgb(0,0,0)',
+                  CONFIG_SLIDESHOW_SECONDS: '5',
+                  }
 
 
 class IWConfig:
@@ -102,6 +105,12 @@ class IWConfig:
 
     def setInterfaceImageBGColour(self, colour):
         self._setConfig(CONFIG_IMAGE_BG_COLOUR, colour.to_string())
+
+    def setSlideshowSeconds(self, seconds: str) -> None:
+        self._setConfig(CONFIG_SLIDESHOW_SECONDS, seconds)
+
+    def getSlideshowSeconds(self) -> int:
+        return self._getConfigInt(CONFIG_SLIDESHOW_SECONDS)
 
 
 def readConfig(config_folder):
