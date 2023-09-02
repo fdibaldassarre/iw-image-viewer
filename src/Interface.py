@@ -398,13 +398,20 @@ class Interface:
             self.enableSlideshow()
         #Gtk.main()
 
+    def request_close(self, *args):
+        self.main_window.close()
+        # Gtk.main_quit()
+
     def close(self, *args):
         self.stopAnimationUpdate()
-        GObject.source_remove(self.fade_timeout)
+        if self.fade_timeout is not None:
+            GObject.source_remove(self.fade_timeout)
+            self.fade_timeout = None
         if self.inotify_timeout is not None:
             GObject.source_remove(self.inotify_timeout)
+            self.inotify_timeout = None
+        # Close the viewer
         self.image_viewer.close()
-        #Gtk.main_quit()
 
     def resize(self, size):
         self.main_window.resize(*size)
@@ -568,7 +575,7 @@ class Interface:
         accels = Gtk.AccelGroup()
         accelerator = '<control>q'
         key, mod = Gtk.accelerator_parse(accelerator)
-        accels.connect(key, mod, Gtk.AccelFlags.LOCKED, self.close)
+        accels.connect(key, mod, Gtk.AccelFlags.LOCKED, self.request_close)
         accelerator = '<control>0'
         key, mod = Gtk.accelerator_parse(accelerator)
         accels.connect(key, mod, Gtk.AccelFlags.LOCKED, self.forceFitImageToWindow)
