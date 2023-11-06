@@ -1,4 +1,4 @@
-Pillow==9.3.0
+Pillow==10.0.1
 PyGObject==3.42.0
 natsort==8.1.0
 pyinotify==0.9.6
