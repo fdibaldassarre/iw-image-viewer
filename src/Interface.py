@@ -283,6 +283,10 @@ class Interface:
         settings_win = self.builder.get_object('SettingsWindow')
         settings_win.hide()
 
+    def changeSlideshowStatus(self, *args):
+        btn = self.builder.get_object('SlideshowToggle')
+        btn.set_active(not btn.get_active())
+
     def toggleSlideshow(self, *args):
         menu_btn = self.builder.get_object('MenuButton')
         menu_btn.set_active(False)
@@ -571,14 +575,18 @@ class Interface:
     ########################
     ## Keyboard shortcuts ##
     ########################
+    def addShortcut(self, accels: Gtk.AccelGroup, accelerator: str, callback) -> None:
+        key, mod = Gtk.accelerator_parse(accelerator)
+        accels.connect(key, mod, Gtk.AccelFlags.LOCKED, callback)
+
+
     def loadAccels(self):
         accels = Gtk.AccelGroup()
-        accelerator = '<control>q'
-        key, mod = Gtk.accelerator_parse(accelerator)
-        accels.connect(key, mod, Gtk.AccelFlags.LOCKED, self.request_close)
-        accelerator = '<control>0'
-        key, mod = Gtk.accelerator_parse(accelerator)
-        accels.connect(key, mod, Gtk.AccelFlags.LOCKED, self.forceFitImageToWindow)
+
+        self.addShortcut(accels, '<control>q', self.request_close)
+        self.addShortcut(accels, '<control>0', self.forceFitImageToWindow)
+        self.addShortcut(accels, 'F5', self.changeSlideshowStatus)
+
         self.main_window.add_accel_group(accels)
 
     def monitorKeyboard(self, widget, event):
