@@ -49,11 +49,9 @@ class ImageViewerApplication(Gtk.Application):
 
     def inhibit_sleep(self, inhibit: bool = True):
         if inhibit:
-            print("Inhibit")
             if self.inhibit_cookie is None:
                 self.inhibit_cookie = Gtk.Application.inhibit(self, self.main_window, Gtk.ApplicationInhibitFlags.IDLE, "No idle")
         else:
-            print("Inhibit disable")
             Gtk.Application.uninhibit(self, self.inhibit_cookie)
             self.inhibit_cookie = None
 
