@@ -9,14 +9,11 @@ Install the .deb from the [latest release page](https://github.com/fdibaldassarr
 ## Shortcuts
 
 * Navigation: Right/left arrows
-  
 * Zoom: Mouse scroll or +/-
-  
-* Fullscreen: F11 
-  
-* Exit: Ctrl+q
-  
 * Fit to window: Ctrl+0
+* Fullscreen: F11
+* Slideshow: F5
+* Exit: Ctrl+q
 
 
 ## Development
@@ -37,6 +34,4 @@ pip install -r requirements.txt
 ### Todo
 
 * Better folder monitoring
-  
-* Interface fixes depending on Gtk version
-  
+
