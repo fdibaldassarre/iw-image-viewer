@@ -35,7 +35,7 @@ class IWConfig:
 
     def __init__(self, config_file):
         self.config_file = config_file
-        self.config = configparser.SafeConfigParser(DEFAULT_CONFIG)
+        self.config = configparser.ConfigParser(DEFAULT_CONFIG)
 
     def init(self):
         self.config.read(self.config_file)
